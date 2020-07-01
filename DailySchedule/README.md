@@ -102,6 +102,7 @@
 [The Rust Programming Language](https://doc.rust-lang.org/book/)  
 上面的链接很清楚完整地说明了rustup在Linux系统下的安装，下面这个链接说明了如何更rustup改为国内镜像源：  
 [rust国内源](https://www.jianshu.com/p/cf1b534dbb16)  
+按照文档《The Rust Programming Language》基于rust实现了一个猜数字小游戏，并通过这个简单的例子对rust语言有了初步的了解。  
 ### 问题
 + rustup在Linux系统上如何安装
 + 如何使用cargo管理rust项目和代码
@@ -113,6 +114,26 @@
 
 <span id="Day001"></span>
 ## Day 1 （2020-07-01）
+
+### 事件1：继续学习rust语言
+阅读文档[The Rust Programming Language](https://doc.rust-lang.org/book/) ，完成了以下模块的学习：  
++ rust中的常见编程概念
++ 认识rust中的所有权
++ 使用rust结构体
++ 枚举与模式匹配
++ 使用包，Crate和模块管理项目
++ rust中的常见集合vector，字符串和哈希map
++ 错误处理
++ 泛型，trait和生命周期
+
+并动手实现了上面某些模块的示例代码。  
+### 问题
++ 对于以上模块的学习，有些是一知半解，一些细节比较难掌握
++ rust语言和我之前学的C或C++之间有不少不同点
+
+### 预期计划
++ 完成《The Rust Programming Language》中前十个章节的学习
++ 动手实现文档中的实例代码并理解
 
 <span id="Day002"></span>
 ## Day 2 （2020-07-02）
