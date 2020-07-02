@@ -157,11 +157,24 @@ Rust为测试提供了许多注解和宏，这让我们可以很方便直观地�
 基于Rust语言实现Linux系统下的经典命令行工具grep。  
 grep最简单的使用场景是在特定文件中搜索指定字符串。为此，grep获取一个文件名和一个字符串作为参数，接着读取文件并找到其中包含字符串参数的行，然后打印出这些行。  
 学习如何让命令行工具利用很多命令行工具中用到的终端功能。读取环境变量来使得用户可以配置工具的行为。打印到标准错误控制流（stderr） 而不是标准输出（stdout），这样用户可以选择将成功输出重定向到文件中的同时仍然在屏幕上显示错误信息。  
+[minigrep](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Rust_Learning_Code/minigrep/src)
 
 ### 事件3：完成《Rust编程之道》第十章的完整实例代码，掌握Cargo和模块系统
 编写一个命令行工具，可以接收一个CSV文件，并且可以指定固定的值来覆盖指定列的所有数据，然后将结果输出到新的CSV文件中。  
 通过编写这个实例代码，从零开始实现一个完整功能包，掌握如何使用Cargo管理包和模块系统。  
 同时也是对前面的理论学习的温故知新。  
-<span id="Day003"></span>
+[csv_challenge](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Rust_Learning_Code/csv_challenge/src)
 
+### 事件4：学习迭代器与闭包
+Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其他函数的匿名函数。可以在一个地方创建闭包，然后在不同的上下文中执行闭包运算。不同于函数，闭包允许捕获调用者作用域中的值。  
+迭代器模式允许你对一个项的序列进行某些处理。迭代器（iterator）负责遍历序列中的每一项和决定序列何时结束的逻辑。当使用迭代器时，我们无需重新实现这些逻辑。  
+闭包和迭代器概念在Rust语言中使用特别多，需要完全掌握。  
+
+### 事件5：阅读《Rust编程之道》第2,3,4,5章
+浏览《Rust编程之道》第2,3,4,5章，回顾之前的知识，并对梳理一遍之前半知半解的内容。  
+重点理解泛型，trait，生命周期参数。  
+
+### 事件6：着手开始做一些Rust小练习题
+练习题链接：[exercises](https://github.com/rust-lang/rustlings)
+<span id="Day003"></span>
 ## Day 3 （2020-07-03）
