@@ -184,4 +184,23 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + struct
 
 <span id="Day003"></span>
+
 ## Day 3 （2020-07-03）
+### 预期计划
++ 继续完成一些Rust练习题
++ 学习《The Rust Programming Language》14～17章的内容
++ 查阅一些资料，初步了解一下RISC-V系统结构
+
+### 事件1：完成一部分Rust小练习题
+练习题链接：[exercises](https://github.com/rust-lang/rustlings)  
+完成了以下练习题：  
++ test1.rs
++ strings
++ test2.rs
++ enums
++ tests
++ test3.rs
++ modules
++ macros
++ test4.rs
++ 
