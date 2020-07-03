@@ -217,3 +217,11 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 控制器的实现
 
 ### 事件3： 继续完成一部分Rust小练习题
+练习题链接：[exercises](https://github.com/rust-lang/rustlings)  
+完成了以下练习题：  
++ move_semantics
++ error_hadling
++ options
++ clippys
+
+### 事件4：学习更多关于Cargo和Crates.io的内容
