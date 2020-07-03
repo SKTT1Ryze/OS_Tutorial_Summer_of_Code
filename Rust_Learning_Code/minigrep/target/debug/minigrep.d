@@ -1,0 +1,1 @@
+/home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/minigrep/target/debug/minigrep: /home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/minigrep/src/lib.rs /home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/minigrep/src/main.rs
