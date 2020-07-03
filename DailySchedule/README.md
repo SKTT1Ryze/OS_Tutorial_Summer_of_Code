@@ -175,6 +175,13 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 重点理解泛型，trait，生命周期参数。  
 
 ### 事件6：着手开始做一些Rust小练习题
-练习题链接：[exercises](https://github.com/rust-lang/rustlings)
+练习题链接：[exercises](https://github.com/rust-lang/rustlings)  
+完成了以下练习题：  
++ variables
++ primitive_types
++ functions
++ if
++ struct
+
 <span id="Day003"></span>
 ## Day 3 （2020-07-03）
