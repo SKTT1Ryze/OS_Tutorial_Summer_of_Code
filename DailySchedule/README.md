@@ -270,6 +270,8 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + threads
 + conversions
 
+![finish_rustlings](./img/finish_rustlings.png)
+
 到此Rust小练习题全部完成！
 
 ### 事件4：阅读《RISC-V-Reader-Chinese》，进一步学习RISC-V架构的知识
@@ -277,4 +279,21 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 学习RV32/64特权架构
 
 ### 事件5：观看清华大学操作系统慕课
++ 什么是操作系统
++ 从OS角度看操作系统
+
+### 事件6：学习完剩下的Rust语言知识
++ Rust的面向对象编程特性
++ 模式匹配
++ Rust高级特征
+
+### 事件7：实现Rust项目：构建多线程web server
+
+
+
+
+
+
+
+
 
