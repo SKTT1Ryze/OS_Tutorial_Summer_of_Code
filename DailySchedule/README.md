@@ -184,11 +184,10 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + struct
 
 <span id="Day003"></span>
-
 ## Day 3 （2020-07-03）
 ### 预期计划
 + 继续完成一些Rust练习题
-+ 学习《The Rust Programming Language》14～17章的内容
++ 学习《The Rust Programming Language》14，15章的内容
 + 查阅一些资料，初步了解一下RISC-V系统结构
 
 ### 事件1：完成一部分Rust小练习题
@@ -240,3 +239,31 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 观看视频：《半个世纪过去了，是时候用Rust重写操作系统了吗》
 + 阅读PPT：《尝试用Rust写教学操作系统》
 + 阅读文章：《使用Rust编写操作系统》
+
+<span id="Day004"></span>
+
+## Day 4 （2020-07-04）
+## 预期计划
++ 学习完《The Rust Programming Language》剩下章节的内容
++ 进一步学习RISC-V架构的知识
++ 继续完成一部分Rust小练习题
++ 看清华大学慕课回顾一下操作系统原理的知识
++ 完成rCore-Tutorial V3的环境配置，并尝试完成Lab0
+
+### 事件1：继续完成一部分Rust小练习题
+练习题链接：[exercises](https://github.com/rust-lang/rustlings)  
+完成了以下练习题：  
++ generics
++ traits
+
+### 事件2：学习Rust的并发编程
+阅读《The Rust Programming Language》第十六章内容
++ 如何创建线程来同时运行多段代码
++ 消息传递并发，其中通道被用来在线程间传递消息
++ 共享状态并发，其中多个线程可以访问同一片区域
++ Sync和Send trait，将Rust的并发保证扩展到用户定义的以及标准库提供的类型中
+
+
+
+
+
