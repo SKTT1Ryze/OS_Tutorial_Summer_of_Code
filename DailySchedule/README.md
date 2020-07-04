@@ -248,13 +248,14 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 进一步学习RISC-V架构的知识
 + 继续完成一部分Rust小练习题
 + 看清华大学慕课回顾一下操作系统原理的知识
-+ 完成rCore-Tutorial V3的环境配置，并尝试完成Lab0
++ 完成rCore-Tutorial V3的环境配置，并开始Lab0
 
 ### 事件1：继续完成一部分Rust小练习题
 练习题链接：[exercises](https://github.com/rust-lang/rustlings)  
 完成了以下练习题：  
 + generics
 + traits
++ standard_library_types
 
 ### 事件2：学习Rust的并发编程
 阅读《The Rust Programming Language》第十六章内容
@@ -263,7 +264,17 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 共享状态并发，其中多个线程可以访问同一片区域
 + Sync和Send trait，将Rust的并发保证扩展到用户定义的以及标准库提供的类型中
 
+### 事件3：完成全部Rust小练习题
+练习题链接：[exercises](https://github.com/rust-lang/rustlings)  
+完成了以下练习题：  
++ threads
++ conversions
 
+到此Rust小练习题全部完成！
 
+### 事件4：阅读《RISC-V-Reader-Chinese》，进一步学习RISC-V架构的知识
++ 学习RV32F和RV32D
++ 学习RV32/64特权架构
 
+### 事件5：观看清华大学操作系统慕课
 
