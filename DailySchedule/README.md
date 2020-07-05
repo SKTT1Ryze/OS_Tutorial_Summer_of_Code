@@ -288,6 +288,11 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + Rust高级特征
 
 ### 事件7：实现Rust项目：构建多线程web server
+[web_server](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Rust_Learning_Code/hello)  
+在完成项目的过程中梳理一遍Rust语法。  
+
+### 事件8：开始Lab0
+
 
 
 
