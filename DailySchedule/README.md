@@ -310,4 +310,4 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 阅读论文《Rust语言操作系统的设计与实现》
 
 ### 事件1：继续完成Lab0
-
+[Lab0](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab0/os)
