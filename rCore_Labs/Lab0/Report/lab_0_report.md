@@ -281,6 +281,7 @@ Disassembly of section .text:
 `OpenSBI`固件运行在`RISC-V-64`的`M Mode`，我们将要实现的操作系统内核运行在`S Mode`，而我们要支持的用户程序运行在`U Mode`。上面三个`Mode`是`RISC-V`架构的三个特权级，这也是`RISC-V`与`x86`与众不同的地方，`x86`只有两个特权级，内核态和用户态。  
 这里`OpenSBI`做的一件事情就是把CPU从`M Mode`切换到`S Mode`，接着跳转到一个固定地址0x80200000去执行内核代码。  
 创建文件`os/src/asm/entry.asm`：  
+
 ```
     .section .text.entry
     .globl _start
@@ -519,4 +520,557 @@ pub fn shutdown() -> ! {
 ```
 如果只能使用`console_putchar`这种输出方式无疑会给我们后面的调试带来极大的不便，下面我们就来实现`print!`宏和`println!`宏。  
 
+关于格式化输出，Rust中提供了一个接口`core::fmt::Write`，如果实现了函数：  
+```
+fn write_str(&mut self, s: &str) -> Result
+```
+就可以调用如下函数：（基于`write_str`函数）  
+```
+fn write_fmt(mut self: &mut Self, args: Arguments<'_>) -> Result
+```
+这个函数需要处理`Arguments`类封装的输出字符串，考虑利用现成的`format_args!`宏将模式字符串和参数列表的输入转化为`Arguments`类。  
+大致思路：  
++ 解析传入参数，转化为`Arguments`类
++ 调用`write_fmt`函数输出这个类
+
+这部分整个代码放在`os/src/console.rs`下：  
+```
+//! 实现控制台的字符输入和输出
+//! 
+//! # 格式化输出
+//! 
+//! [`core::fmt::Write`] trait 包含
+//! - 需要实现的 [`write_str`] 方法
+//! - 自带实现，但依赖于 [`write_str`] 的 [`write_fmt`] 方法
+//! 
+//! 我们声明一个类型，为其实现 [`write_str`] 方法后，就可以使用 [`write_fmt`] 来进行格式化输出
+//! 
+//! [`write_str`]: core::fmt::Write::write_str
+//! [`write_fmt`]: core::fmt::Write::write_fmt
+
+use crate::sbi::*;
+use core::fmt::{self, Write};
+
+/// 一个 [Zero-Sized Type]，实现 [`core::fmt::Write`] trait 来进行格式化输出
+/// 
+/// ZST 只可能有一个值（即为空），因此它本身就是一个单件
+struct Stdout;
+
+impl Write for Stdout {
+    /// 打印一个字符串
+    /// 
+    /// 对于每一个字符调用 [`console_putchar`]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            console_putchar(c as usize);
+        }
+        Ok(())
+    }
+}
+
+/// 打印由 [`core::format_args!`] 格式化后的数据
+/// 
+/// [`print!`] 和 [`println!`] 宏都将展开成此函数
+/// 
+/// [`core::format_args!`]: https://doc.rust-lang.org/nightly/core/macro.format_args.html
+pub fn print(args: fmt::Arguments) {
+    Stdout.write_fmt(args).unwrap();
+}
+
+/// 实现类似于标准库中的 `print!` 宏
+/// 
+/// 使用实现了 [`core::fmt::Write`] trait 的 [`console::Stdout`]
+#[macro_export]
+macro_rules! print {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!($fmt $(, $($arg)+)?));
+    }
+}
+
+/// 实现类似于标准库中的 `println!` 宏
+/// 
+/// 使用实现了 [`core::fmt::Write`] trait 的 [`console::Stdout`]
+#[macro_export]
+macro_rules! println {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
+    }
+}
+```
+最后使用实现的格式化输出和关机的函数，将`main`中处理panic的语义项抽取并完善到`panic.rs`中：  
+```
+//! 代替 std 库，实现 panic 和 abort 的功能
+
+use core::panic::PanicInfo;
+use crate::sbi::shutdown;
+
+///
+/// ### `#[panic_handler]` 属性
+#[panic_handler]
+fn panic_handler(info: &PanicInfo) -> ! {
+    // `\x1b[??m` 是控制终端字符输出格式的指令，在支持的平台上可以改变文字颜色等等
+    // 这里使用错误红
+    // 需要全局开启 feature(panic_info_message) 才可以调用 .message() 函数
+    // 参考：https://misc.flogisoft.com/bash/tip_colors_and_formatting
+    println!("\x1b[1;31mpanic: '{}'\x1b[0m", info.message().unwrap());
+    shutdown()
+}
+
+/// 终止程序
+/// 
+/// 调用 [`panic_handler`]
+#[no_mangle]
+extern "C" fn abort() -> ! {
+    panic!("abort()")
+}
+```
+在`os/src/main.rs`中去掉之前写的`console_putchar`并调用整理好的打印函数。  
+`os/src/main.rs`
+```
+/*
+ * rCore Labs: Lab 0
+ * 2020/7/5
+ * hustccc
+ * Manjaro
+ */
+//! # global
+#![no_std]
+#![no_main]
+//#![warn(missing_docs)]
+//insert assemble file
+#![feature(asm)]
+#![feature(llvm_asm)]
+#![feature(global_asm)]
+#![feature(panic_info_message)]
+
+#[macro_use]
+mod console;
+mod panic;
+mod sbi;
+
+//entry
+global_asm!(include_str!("asm/entry.asm"));
+
+/*
+use core::panic::PanicInfo;
+//use inserted assemble for print a char
+pub fn console_putchar(ch: u8) {
+    let _ret: usize;
+    let arg0: usize = ch as usize;
+    let arg1: usize = 0;
+    let arg2: usize = 0;
+    let which: usize = 1;
+    unsafe {
+        llvm_asm!("ecall"
+        //asm!("ecall"
+             : "={x10}" (_ret)
+             : "{x10}" (arg0), "{x11}" (arg1), "{x12}" (arg2), "{x17}" (which)
+             : "memory"
+             : "volatile"
+        );
+    }
+}
+//entry for Rust
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    console_putchar(b'R');
+    console_putchar(b'u');
+    console_putchar(b's');
+    console_putchar(b't');
+    console_putchar(b'_');
+    console_putchar(b'O');
+    console_putchar(b'S');
+    console_putchar(b'\n');
+    loop {}
+}
+*/
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 0");
+    panic!("Hi,panic here...")
+}
+```
+运行效果：（这里注释掉了一下产生警告的行）  
+![lab0_10](./img/lab0_10.png)  
+
 ## 实验总结
+本次实验作为rCore系列实验的预备实验，不禁让人惊讶于其内容之丰富，设计之巧妙，做着做着就沉浸其中，回过神来已经花了一天的时间。  
+这个实验涉及了很多我之前没有接触到过的知识，比如OpenSBI，比如qemu的使用方法，整个实验下来，收益良多。  
+这个实验同样包涵了我之前接触到过的知识，比如开机后内核启动过程，这和我自学的Linux内核启动过程类似，还比如RISC-V特权级，这些较为熟悉的知识让我比较容易地理解实验的做法和流程。  
+做实验过程中也遇到过坑，比如写Makefile时直接复制粘贴导致tab键不匹配，还有实验指导中的代码有些是需要稍微修改一下的，总的来说比较顺利。  
+预备实验就已经有一定的难度并且给我带来了许多挑战，这不禁让我对后面的实验期待起来。  
+
+## 附录
+参考：实验指导，《用Rust编写操作系统》  
+各个模块的源代码：（这里为了去掉编译警告注释掉了一些行）  
+`main.rs`
+```
+/*
+ * rCore Labs: Lab 0
+ * 2020/7/5
+ * hustccc
+ * Manjaro
+ */
+//! # global
+#![no_std]
+#![no_main]
+//#![warn(missing_docs)]
+//insert assemble file
+#![feature(asm)]
+#![feature(llvm_asm)]
+#![feature(global_asm)]
+#![feature(panic_info_message)]
+
+#[macro_use]
+mod console;
+mod panic;
+mod sbi;
+
+//entry
+global_asm!(include_str!("asm/entry.asm"));
+
+/*
+use core::panic::PanicInfo;
+//use inserted assemble for print a char
+pub fn console_putchar(ch: u8) {
+    let _ret: usize;
+    let arg0: usize = ch as usize;
+    let arg1: usize = 0;
+    let arg2: usize = 0;
+    let which: usize = 1;
+    unsafe {
+        llvm_asm!("ecall"
+        //asm!("ecall"
+             : "={x10}" (_ret)
+             : "{x10}" (arg0), "{x11}" (arg1), "{x12}" (arg2), "{x17}" (which)
+             : "memory"
+             : "volatile"
+        );
+    }
+}
+//entry for Rust
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    console_putchar(b'R');
+    console_putchar(b'u');
+    console_putchar(b's');
+    console_putchar(b't');
+    console_putchar(b'_');
+    console_putchar(b'O');
+    console_putchar(b'S');
+    console_putchar(b'\n');
+    loop {}
+}
+*/
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 0");
+    panic!("Hi,panic here...")
+}
+```
+`sbi.rs`
+```
+//const SBI_SET_TIMER: usize = 0;
+const SBI_CONSOLE_PUTCHAR: usize = 1;
+//const SBI_CONSOLE_GETCHAR: usize = 2;
+//const SBI_CLEAR_IPI: usize = 3;
+//const SBI_SEND_IPI: usize = 4;
+//const SBI_REMOTE_FENCE_I: usize = 5;
+//const SBI_REMOTE_SFENCE_VMA: usize = 6;
+//const SBI_REMOTE_SFENCE_VMA_ASID: usize = 7;
+const SBI_SHUTDOWN: usize = 8;
+
+
+//#![allow(unused)]
+
+/// SBI 调用
+#[inline(always)]
+fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
+    let ret;
+    unsafe {
+        llvm_asm!("ecall"
+            : "={x10}" (ret)
+            : "{x10}" (arg0), "{x11}" (arg1), "{x12}" (arg2), "{x17}" (which)
+            : "memory"      // 如果汇编可能改变内存，则需要加入 memory 选项
+            : "volatile");  // 防止编译器做激进的优化（如调换指令顺序等破坏 SBI 调用行为的优化）
+    }
+    ret
+}
+
+/// 向控制台输出一个字符
+///
+/// 需要注意我们不能直接使用 Rust 中的 char 类型
+pub fn console_putchar(c: usize) {
+    sbi_call(SBI_CONSOLE_PUTCHAR, c, 0, 0);
+}
+
+/// 从控制台中读取一个字符
+///
+/// 没有读取到字符则返回 -1
+/*
+pub fn console_getchar() -> usize {
+    sbi_call(SBI_CONSOLE_GETCHAR, 0, 0, 0)
+}*/
+
+/// 调用 SBI_SHUTDOWN 来关闭操作系统（直接退出 QEMU）
+pub fn shutdown() -> ! {
+    sbi_call(SBI_SHUTDOWN, 0, 0, 0);
+    unreachable!()
+}
+```
+`console.rs`
+```
+//! 实现控制台的字符输入和输出
+//! 
+//! # 格式化输出
+//! 
+//! [`core::fmt::Write`] trait 包含
+//! - 需要实现的 [`write_str`] 方法
+//! - 自带实现，但依赖于 [`write_str`] 的 [`write_fmt`] 方法
+//! 
+//! 我们声明一个类型，为其实现 [`write_str`] 方法后，就可以使用 [`write_fmt`] 来进行格式化输出
+//! 
+//! [`write_str`]: core::fmt::Write::write_str
+//! [`write_fmt`]: core::fmt::Write::write_fmt
+
+use crate::sbi::*;
+use core::fmt::{self, Write};
+
+/// 一个 [Zero-Sized Type]，实现 [`core::fmt::Write`] trait 来进行格式化输出
+/// 
+/// ZST 只可能有一个值（即为空），因此它本身就是一个单件
+struct Stdout;
+
+impl Write for Stdout {
+    /// 打印一个字符串
+    /// 
+    /// 对于每一个字符调用 [`console_putchar`]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            console_putchar(c as usize);
+        }
+        Ok(())
+    }
+}
+
+/// 打印由 [`core::format_args!`] 格式化后的数据
+/// 
+/// [`print!`] 和 [`println!`] 宏都将展开成此函数
+/// 
+/// [`core::format_args!`]: https://doc.rust-lang.org/nightly/core/macro.format_args.html
+pub fn print(args: fmt::Arguments) {
+    Stdout.write_fmt(args).unwrap();
+}
+
+/// 实现类似于标准库中的 `print!` 宏
+/// 
+/// 使用实现了 [`core::fmt::Write`] trait 的 [`console::Stdout`]
+#[macro_export]
+macro_rules! print {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!($fmt $(, $($arg)+)?));
+    }
+}
+
+/// 实现类似于标准库中的 `println!` 宏
+/// 
+/// 使用实现了 [`core::fmt::Write`] trait 的 [`console::Stdout`]
+#[macro_export]
+macro_rules! println {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
+    }
+}
+```
+`panic.rs`
+```
+//! 代替 std 库，实现 panic 和 abort 的功能
+
+use core::panic::PanicInfo;
+use crate::sbi::shutdown;
+
+///
+/// ### `#[panic_handler]` 属性
+#[panic_handler]
+fn panic_handler(info: &PanicInfo) -> ! {
+    // `\x1b[??m` 是控制终端字符输出格式的指令，在支持的平台上可以改变文字颜色等等
+    // 这里使用错误红
+    // 需要全局开启 feature(panic_info_message) 才可以调用 .message() 函数
+    // 参考：https://misc.flogisoft.com/bash/tip_colors_and_formatting
+    println!("\x1b[1;31mpanic: '{}'\x1b[0m", info.message().unwrap());
+    shutdown()
+}
+
+/// 终止程序
+/// 
+/// 调用 [`panic_handler`]
+#[no_mangle]
+extern "C" fn abort() -> ! {
+    panic!("abort()")
+}
+```
+`entry.asm`
+```
+# 操作系统启动时所需的指令以及字段
+#
+# 我们在 linker.ld 中将程序入口设置为了 _start，因此在这里我们将填充这个标签
+# 它将会执行一些必要操作，然后跳转至我们用 rust 编写的入口函数
+#
+# 关于 RISC-V 下的汇编语言，可以参考 https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md
+
+    .section .text.entry
+    .globl _start
+# 目前 _start 的功能：将预留的栈空间写入 $sp，然后跳转至 rust_main
+_start:
+    la sp, boot_stack_top
+    call rust_main
+
+    # 回忆：bss 段是 ELF 文件中只记录长度，而全部初始化为 0 的一段内存空间
+    # 这里声明字段 .bss.stack 作为操作系统启动时的栈
+    .section .bss.stack
+    .global boot_stack
+boot_stack:
+    # 16K 启动栈大小
+    .space 4096 * 16
+    .global boot_stack_top
+boot_stack_top:
+    # 栈结尾
+```
+`linker.ld`
+```
+/* 有关 Linker Script 可以参考：https://sourceware.org/binutils/docs/ld/Scripts.html */
+
+/* 目标架构 */
+OUTPUT_ARCH(riscv)
+
+/* 执行入口 */
+ENTRY(_start)
+
+/* 数据存放起始地址 */
+BASE_ADDRESS = 0x80200000;
+
+SECTIONS
+{
+    /* . 表示当前地址（location counter） */
+    . = BASE_ADDRESS;
+
+    /* start 符号表示全部的开始位置 */
+    kernel_start = .;
+
+    text_start = .;
+
+    /* .text 字段 */
+    .text : {
+        /* 把 entry 函数放在最前面 */
+        *(.text.entry)
+        /* 要链接的文件的 .text 字段集中放在这里 */
+        *(.text .text.*)
+    }
+
+    rodata_start = .;
+
+    /* .rodata 字段 */
+    .rodata : {
+        /* 要链接的文件的 .rodata 字段集中放在这里 */
+        *(.rodata .rodata.*)
+    }
+
+    data_start = .;
+
+    /* .data 字段 */
+    .data : {
+        /* 要链接的文件的 .data 字段集中放在这里 */
+        *(.data .data.*)
+    }
+
+    bss_start = .;
+
+    /* .bss 字段 */
+    .bss : {
+        /* 要链接的文件的 .bss 字段集中放在这里 */
+        *(.sbss .bss .bss.*)
+    }
+
+    /* 结束地址 */
+    kernel_end = .;
+}
+```
+`config`
+```
+[build]
+target = "riscv64imac-unknown-none-elf"
+# use my own linker script
+[target.riscv64imac-unknown-none-elf]
+rustflags = [
+    "-C", "link-arg=-Tsrc/linker/linker.ld",
+]
+```
+`Cargo.toml`
+```
+[package]
+name = "os"
+version = "0.1.0"
+authors = ["hustccc <1276675421@qq.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+# exit when panic occur
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+```
+`Makefile`
+```
+TARGET      := riscv64imac-unknown-none-elf
+MODE        := debug
+KERNEL_FILE := target/$(TARGET)/$(MODE)/os
+BIN_FILE    := target/$(TARGET)/$(MODE)/kernel.bin
+
+OBJDUMP     := rust-objdump --arch-name=riscv64
+OBJCOPY     := rust-objcopy --binary-architecture=riscv64
+
+.PHONY: doc kernel build clean qemu run env
+
+# 默认 build 为输出二进制文件
+build: $(BIN_FILE) 
+
+# 通过 Rust 文件中的注释生成 os 的文档
+doc:
+	@cargo doc --document-private-items
+
+# 编译 kernel
+kernel:
+	@cargo build
+
+# 生成 kernel 的二进制文件
+$(BIN_FILE): kernel
+	@$(OBJCOPY) $(KERNEL_FILE) --strip-all -O binary $@
+
+# 查看反汇编结果
+asm:
+	@$(OBJDUMP) -d $(KERNEL_FILE) | less
+
+# 清理编译出的文件
+clean:
+	@cargo clean
+
+# 运行 QEMU
+qemu: build
+	@qemu-system-riscv64 \
+            -machine virt \
+            -nographic \
+            -bios default \
+            -device loader,file=$(BIN_FILE),addr=0x80200000
+
+# 一键运行
+run: build qemu
+```

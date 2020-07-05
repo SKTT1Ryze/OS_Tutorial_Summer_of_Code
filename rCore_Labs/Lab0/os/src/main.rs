@@ -4,19 +4,26 @@
  * hustccc
  * Manjaro
  */
+//! # global
 #![no_std]
 #![no_main]
+//#![warn(missing_docs)]
 //insert assemble file
 #![feature(asm)]
 #![feature(llvm_asm)]
 #![feature(global_asm)]
+#![feature(panic_info_message)]
+
+#[macro_use]
+mod console;
+mod panic;
+mod sbi;
 
 //entry
 global_asm!(include_str!("asm/entry.asm"));
 
+/*
 use core::panic::PanicInfo;
-
-
 //use inserted assemble for print a char
 pub fn console_putchar(ch: u8) {
     let _ret: usize;
@@ -47,10 +54,13 @@ pub extern "C" fn rust_main() -> ! {
     console_putchar(b'\n');
     loop {}
 }
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+*/
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 0");
+    panic!("Hi,panic here...")
 }
 
 
