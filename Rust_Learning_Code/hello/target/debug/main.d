@@ -1,0 +1,1 @@
+/home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/hello/target/debug/main: /home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/hello/src/bin/main.rs /home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/hello/src/lib.rs
