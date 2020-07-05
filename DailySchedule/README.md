@@ -299,10 +299,15 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 和实验指导：[lab0](https://rcore-os.github.io/rCore-Tutorial-deploy/docs/lab-0/guide/intro.html)
 
 
+<span id="Day005"></span>
 
+## Day 5 （2020-07-05）
+### 预期计划
++ 继续完成Lab0
++ 继续学习一部分操作系统的知识
++ 开始用Rust语言重新实现15道以上的编程练习题
++ 阅读RISC-V特权指令规范
++ 阅读论文《Rust语言操作系统的设计与实现》
 
-
-
-
-
+### 事件1：继续完成Lab0
 
