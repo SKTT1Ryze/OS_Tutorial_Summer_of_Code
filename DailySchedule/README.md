@@ -289,10 +289,14 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 
 ### 事件7：实现Rust项目：构建多线程web server
 [web_server](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Rust_Learning_Code/hello)  
+
+![web_server](./img/web_server.png)
+
 在完成项目的过程中梳理一遍Rust语法。  
 
 ### 事件8：开始Lab0
-
+参考文章：[writing-an-os-in-rust](https://github.com/rustcc/writing-an-os-in-rust/blob/master/01-freestanding-rust-binary.md)  
+和实验指导：[lab0](https://rcore-os.github.io/rCore-Tutorial-deploy/docs/lab-0/guide/intro.html)
 
 
 
