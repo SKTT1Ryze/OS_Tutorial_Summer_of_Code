@@ -1,0 +1,1 @@
+/home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/struct_and_pointers_to_them/target/debug/struct_and_pointers_to_them: /home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/struct_and_pointers_to_them/src/main.rs

@@ -1,0 +1,1 @@
+/home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/arrays_and_strings/target/debug/arrays_and_strings: /home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/arrays_and_strings/src/main.rs
