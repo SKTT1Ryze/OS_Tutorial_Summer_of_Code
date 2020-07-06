@@ -310,4 +310,21 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 阅读论文《Rust语言操作系统的设计与实现》
 
 ### 事件1：继续完成Lab0
-[Lab0](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab0/os)
+源码：  
+[Lab0](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab0/os)  
+报告：  
+[Lab0_Report](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab0/Report)
+
+### 事件二：加深对unsafe Rust的理解
+不安全的超级力量：  
++ 解引用裸指针
++ 调用不安全的函数或方法
++ 访问和修改可变静态变量
++ 实现不安全trait
++ 访问`union`的字段
+
+### 事件三：继续观看清华大学mooc学习操作系统知识
++ 中断，异常和系统调用的基本概念和原理
++ 硬件架构支持
+
+今天由于完成Lab0花费的时间超出预期，几乎花了一整天，因此没能顺利完成预期计划，明天继续加油。  
