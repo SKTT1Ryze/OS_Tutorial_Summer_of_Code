@@ -355,4 +355,5 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 希尔排序
 用Rust做一些LeetCode题目：  [leetcode for rust](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/LeetCode_Rust)
 
-实现两个小项目：  
+今天一天都在编程，通过实践才发现Rust的语法和我之前学的语言有很大不同，今后需要多在代码实战中提升对Rust语言的掌握和理解。  
+今天又是没能顺利完成预期计划，明天继续加油。  
