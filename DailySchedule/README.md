@@ -340,23 +340,19 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 
 ### 事件1：用Rust语言实现编程练习题
 实现5道《笨方法学C》中的练习题：（这些都比较简单）  
-+ Arrays and Strings,9
-+ Array of Strings and Looping,10
-+ Switch,13
-+ Writing And Using Functions,14
-+ Structs And Pointers To Them,16
-实现单链表：  
-实现双链表：  
-实现栈：  
-实现队列：  
-实现一些排序算法：  
++ [Arrays and Strings,9](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/arrays_and_strings)
++[Array of Strings and Looping,10](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/arrays_of_strings_and_looping)
++ [Switch,13](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/switch_statement)
++ [Writing And Using Functions,14](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/writing_and_using_functions)
++ [Structs And Pointers To Them,16](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/struct_and_pointers_to_them)
+实现单链表：  [linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/linked_list)
+实现双链表： [double linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/double_linked_list)
+实现栈：  [stack](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/stack)
+实现一些排序算法：  [sort](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/sort)
 + 冒泡排序
 + 选择排序
 + 插入排序
 + 希尔排序
-用Rust做一些LeetCode题目：  
-+ 1
-+ 2
-+ 3
+用Rust做一些LeetCode题目：  [leetcode for rust](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/LeetCode_Rust)
 
 实现两个小项目：  
