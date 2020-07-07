@@ -9,7 +9,6 @@ use structopt_derive::*;
 #[derive(StructOpt,Debug)]
 #[structopt(name = "minicat" , about = "Usage")]
 pub struct Opt{
-    //#[structopt(help = "FILE")]
     #[structopt(short = "f", long = "file")]
     pub file: String,
     #[structopt(short = "l", long = "line")]
