@@ -369,4 +369,5 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 
 ## 事件1：用Rust语言完成三个命令行工具
 + 实现minicat命令行工具（类似于Linux上的cat）[minicat](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/minicat)
++ 实现miniecho命令行工具（类似于Linux上的echo）[minicopy](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/miniecho)
 + 
