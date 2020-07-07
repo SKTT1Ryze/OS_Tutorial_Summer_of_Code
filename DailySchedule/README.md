@@ -370,4 +370,10 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 ## 事件1：用Rust语言完成三个命令行工具
 + 实现minicat命令行工具（类似于Linux上的cat）[minicat](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/minicat)
 + 实现miniecho命令行工具（类似于Linux上的echo）[minicopy](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/miniecho)
-+ 
++ 实现minicopy命令行工具（类似于Linux上的cp）[minicopy](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/minicopy)
+
+到现在Rust语言的编程练习就告一段落，开始正式进入操作系统阶段。Rust语言的一些细节在做实验的过程中慢慢领悟和熟悉。  
+
+## 事件2：阅读RISC-V特权指令规范
+
+
