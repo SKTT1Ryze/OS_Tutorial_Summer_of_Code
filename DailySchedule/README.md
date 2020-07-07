@@ -315,7 +315,7 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 报告：  
 [Lab0_Report](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab0/Report)
 
-### 事件二：加深对unsafe Rust的理解
+### 事件2：加深对unsafe Rust的理解
 不安全的超级力量：  
 + 解引用裸指针
 + 调用不安全的函数或方法
@@ -323,7 +323,7 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 实现不安全trait
 + 访问`union`的字段
 
-### 事件三：继续观看清华大学mooc学习操作系统知识
+### 事件3：继续观看清华大学mooc学习操作系统知识
 + 中断，异常和系统调用的基本概念和原理
 + 硬件架构支持
 
@@ -333,7 +333,7 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 
 ## Day 6 （2020-07-06）
 ### 预期计划
-+ 用Rust语言重新实现10道编程练习题
++ 用Rust语言重新实现14道编程练习题
 + 阅读RISC-V特权指令规范
 + 阅读论文《Rust语言操作系统的设计与实现》
 + 继续学习操作系统相关内容
@@ -341,10 +341,11 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 ### 事件1：用Rust语言实现编程练习题
 实现5道《笨方法学C》中的练习题：（这些都比较简单）  
 + [Arrays and Strings,9](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/arrays_and_strings)
-+[Array of Strings and Looping,10](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/arrays_of_strings_and_looping)
++ [Array of Strings and Looping,10](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/arrays_of_strings_and_looping)
 + [Switch,13](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/switch_statement)
 + [Writing And Using Functions,14](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/writing_and_using_functions)
 + [Structs And Pointers To Them,16](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/struct_and_pointers_to_them)
+
 实现单链表：  [linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/linked_list)
 实现双链表： [double linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/double_linked_list)
 实现栈：  [stack](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/stack)
@@ -357,3 +358,15 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 
 今天一天都在编程，通过实践才发现Rust的语法和我之前学的语言有很大不同，今后需要多在代码实战中提升对Rust语言的掌握和理解。  
 今天又是没能顺利完成预期计划，明天继续加油。  
+
+<span id="Day007"></span>
+
+## Day 7 （2020-07-07）
++ 用Rust语言完成三个命令行工具
++ 阅读RISC-V特权指令规范
++ 阅读论文《Rust语言操作系统的设计与实现》
++ 继续学习操作系统相关内容
+
+## 事件1：用Rust语言完成三个命令行工具
++ 实现minicat命令行工具（类似于Linux上的cat）[minicat](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/minicat)
++ 
