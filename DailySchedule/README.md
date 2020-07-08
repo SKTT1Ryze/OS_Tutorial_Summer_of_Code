@@ -344,16 +344,17 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + [Array of Strings and Looping,10](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/arrays_of_strings_and_looping)
 + [Switch,13](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/switch_statement)
 + [Writing And Using Functions,14](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/writing_and_using_functions)
-+ [Structs And Pointers To Them,16](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/struct_and_pointers_to_them)
++ [Structs And Pointers To Them,16](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/struct_and_pointers_to_them)  
 
-实现单链表：  [linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/linked_list)
-实现双链表： [double linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/double_linked_list)
-实现栈：  [stack](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/stack)
-实现一些排序算法：  [sort](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/sort)
+实现单链表：  [linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/linked_list)  
+实现双链表： [double linked list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/double_linked_list)  
+实现栈：  [stack](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/stack)  
+实现一些排序算法：  [sort](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Learn_Rust_The_Hard_Way/sort)  
 + 冒泡排序
 + 选择排序
 + 插入排序
 + 希尔排序
+
 用Rust做一些LeetCode题目：  [leetcode for rust](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/LeetCode_Rust)
 
 今天一天都在编程，通过实践才发现Rust的语法和我之前学的语言有很大不同，今后需要多在代码实战中提升对Rust语言的掌握和理解。  
@@ -375,5 +376,12 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 到现在Rust语言的编程练习就告一段落，开始正式进入操作系统阶段。Rust语言的一些细节在做实验的过程中慢慢领悟和熟悉。  
 
 ## 事件2：阅读RISC-V特权指令规范
++ 理解RISC-V Privileged Software Stack Terminology
++ 了解Control and Status Registers (CSRs)
 
+## 事件3：阅读论文《Rust语言操作系统的设计与实现》
+阅读论文《Rust语言操作系统的设计与实现》，了解学长是怎样用Rust语言写操作系统的。  
+
+## 事件4：阅读《writing-an-os-in-rust》
+编写一个最小化内核。  
 
