@@ -363,25 +363,37 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 <span id="Day007"></span>
 
 ## Day 7 （2020-07-07）
+### 预期计划
 + 用Rust语言完成三个命令行工具
 + 阅读RISC-V特权指令规范
 + 阅读论文《Rust语言操作系统的设计与实现》
 + 继续学习操作系统相关内容
 
-## 事件1：用Rust语言完成三个命令行工具
+### 事件1：用Rust语言完成三个命令行工具
 + 实现minicat命令行工具（类似于Linux上的cat）[minicat](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/minicat)
 + 实现miniecho命令行工具（类似于Linux上的echo）[minicopy](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/miniecho)
 + 实现minicopy命令行工具（类似于Linux上的cp）[minicopy](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/Shell_Tools/minicopy)
 
 到现在Rust语言的编程练习就告一段落，开始正式进入操作系统阶段。Rust语言的一些细节在做实验的过程中慢慢领悟和熟悉。  
 
-## 事件2：阅读RISC-V特权指令规范
+### 事件2：阅读RISC-V特权指令规范
 + 理解RISC-V Privileged Software Stack Terminology
 + 了解Control and Status Registers (CSRs)
 
-## 事件3：阅读论文《Rust语言操作系统的设计与实现》
+### 事件3：阅读论文《Rust语言操作系统的设计与实现》
 阅读论文《Rust语言操作系统的设计与实现》，了解学长是怎样用Rust语言写操作系统的。  
 
-## 事件4：阅读《writing-an-os-in-rust》
+### 事件4：阅读《writing-an-os-in-rust》
 编写一个最小化内核。  
 
+<span id="Day008"></span>
+
+## Day 8 （2020-07-08）
+
+### 预期计划
++ 继续阅读RISC-V特权指令规范
++ 继续阅读论文《Rust语言操作系统的设计与实现》
++ 阅读《writing-an-os-in-rust》
+
+### 事件1：阅读RISC-V特权指令规范
+笔记：[RISCV_note](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/memo/RISCV_note.md)  
