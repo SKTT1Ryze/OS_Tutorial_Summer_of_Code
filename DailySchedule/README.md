@@ -397,4 +397,11 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 
 ### 事件1：阅读RISC-V特权指令规范
 笔记：[RISCV_note](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/memo/RISCV_note.md)  
+
 ### 事件2：阅读论文《Rust语言操作系统的设计与实现》
+看完十分佩服王润基同学，做了如此庞大且困难的工作。  
+### 事件3：阅读《writing-an-os-in-rust》
+
+### 事件4：观看清华大学操作系统线上课程
+
+今天基本上看了一天的RISC-V英文文档，对特权指令有了更深一步的了解，通过后面做实验的过程继续进一步学习。  
