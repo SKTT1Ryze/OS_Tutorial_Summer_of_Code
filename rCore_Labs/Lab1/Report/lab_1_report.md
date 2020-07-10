@@ -84,10 +84,10 @@ pub struct Context {
 > The stvec register is an SXLEN-bit read/write register that holds trap vector configuration, consisting of a vector base address (BASE) and a vector mode (MODE).  
 
 结合下面这幅图来理解：  
-![stvec](/home/hustccc/OS_Tutorial_Summer_of_Code/rCore_Labs/Lab1/Report/img/stvec.png)  
+![stvec](./img/stvec.png)  
 ` stvec `寄存器是保存发生异常时 CPU 需要跳转到的地址。其中 BASE 字段保存着有效的虚拟地址或物理地址，这个地址必须四字节对齐。MODE 字段将会决定寻址方式。  
 
-![MODE](/home/hustccc/OS_Tutorial_Summer_of_Code/rCore_Labs/Lab1/Report/img/stvec_way.png)  
+![MODE](./img/stvec_way.png)  
 也就是说，MODE 字段为 Direct（0）的话，BASE 字段直接指向需要跳转的地址；若 MODE 字段为 Vectored 的话，BASE + 4 × cause 指向需要跳转的地址。  
 
 #### Supervisor Exception Program Counter （sepc）
@@ -108,7 +108,7 @@ state.
 
 结合下面这幅图来理解：  
 
-![sstatus](/home/hustccc/OS_Tutorial_Summer_of_Code/rCore_Labs/Lab1/Report/img/sstatus.png)  
+![sstatus](./img/sstatus.png)  
 ` sstatus `是` supervisor `模式下的状态寄存器，它保存着全局中断使能，以及许多其他状态。  
 需要注意的一点是，CPU 在 S 模式下运行时，只有在全局中断使能位 sstatus.SIE 置 1 时才会产生中断。每个中断在控制状态寄存器` sie `中都有自己的使能位，位置对应于一个中断代码。  
 
