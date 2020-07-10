@@ -10,7 +10,7 @@
 //#![warn(missing_docs)]
 //insert assemble file
 #![feature(asm)]
-#![feature(llvm_asm)]
+//#![feature(llvm_asm)]
 #![feature(global_asm)]
 #![feature(panic_info_message)]
 
