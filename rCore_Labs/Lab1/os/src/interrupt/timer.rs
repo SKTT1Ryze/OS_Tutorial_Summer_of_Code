@@ -1,7 +1,6 @@
 //! set next time interrupt and handle time interrupt
 #![feature(asm)]
 #![feature(llvm_asm)]
-#![feature(global_asm)]
 use crate::sbi::set_timer;
 use riscv::register::{sie, sstatus, time};
 

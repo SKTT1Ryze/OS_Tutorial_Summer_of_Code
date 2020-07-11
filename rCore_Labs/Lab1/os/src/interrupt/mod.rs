@@ -5,7 +5,8 @@
 mod handler;
 mod context;
 mod timer;
-
+mod idt;
+mod handle_function;
 use riscv::register::{sie, sstatus};
 
 pub use context::Context;

@@ -1,10 +1,14 @@
 #![allow(unused)]
-use super::timer;
+#![feature(asm)]
+#![feature(llvm_asm)]
 use super::context::Context;
+use super::timer;
+use super::idt;
+use super::handle_function;
+use super::handle_function::__INTERRUPTS;
 use riscv::register::{
-    stvec,
-    sie,
     scause::{Exception, Interrupt, Scause, Trap},
+    sie, stvec,
 };
 
 global_asm!(include_str!("./interrupt.asm"));
@@ -23,16 +27,17 @@ pub fn init() {
 
         // enable external interrupt
         sie::set_sext();
+        
     }
 }
-
+/*
 /// entry of interrupt handler
-/// 
+///
 /// `interrupt.asm` save Context, and spread as arguments with scause and stval
 /// type of interrupt judged from scause and treat in different ways
 #[no_mangle]
 pub fn handle_interrupt(context: &mut Context, scause: Scause, stval: usize) {
-    // println!("{:x?}", context.scause.cause());
+    // println!("stval: {}", stval);
     match scause.cause() {
         // breakpoint interrupt（ebreak）
         Trap::Exception(Exception::Breakpoint) => breakpoint(context),
@@ -45,34 +50,34 @@ pub fn handle_interrupt(context: &mut Context, scause: Scause, stval: usize) {
         // others unimplemented
         _ => unimplemented!("{:?}: {:x?}, stval: 0x{:x}", scause.cause(), context, stval),
     }
+}*/
+
+/// entry of interrupt handler
+///
+/// `interrupt.asm` save Context, and spread as arguments with scause and stval
+/// type of interrupt judged from scause and treat in different ways
+#[no_mangle]
+pub fn handle_interrupt(context: &mut Context, scause: Scause, stval: usize) {
+    // println!("stval: {}", stval);
+    let temp_idt = idt::IDT::new();
+    let idt_id = match scause.cause() {
+        // breakpoint interrupt（ebreak）
+        Trap::Exception(Exception::Breakpoint) => 0,
+        // system call
+        Trap::Exception(Exception::UserEnvCall) => 1,
+        // time interrupt
+        Trap::Interrupt(Interrupt::SupervisorTimer) => 2,
+        // External interrupt
+        Trap::Interrupt(Interrupt::SupervisorExternal) => 3,
+        // others unimplemented
+        _ => unimplemented!("{:?}: {:x?}, stval: 0x{:x}", scause.cause(), context, stval),
+    };
+    let (base, offset) = (temp_idt.gates[idt_id].base, temp_idt.gates[idt_id].offset);
+    //handle_function::get_handle_function(offset, context);
+    unsafe {
+        (&__INTERRUPTS[offset].handler)(context);
+    }
+    
 }
 
-/// handle ebreak interrupt
-/// 
-/// continue: sepc add 2 to continue
-fn breakpoint(context: &mut Context) {
-    println!("Breakpoint at 0x{:x}", context.sepc);
-    context.sepc += 2;
-}
-/// handle system call
-/// 
-/// continue: sepc add 2 to continue
-fn syscall_handler(context: &mut Context) {
-    println!("system call at 0x{:x}", context.sepc);
-    context.sepc += 2;
-}
 
-/// handle time interrupt
-/// 
-/// count in `tick()` and call a ebreak
-fn supervisor_timer(_: &Context) {
-    timer::tick();
-}
-
-/// handle external interrupt
-/// 
-/// continue: sepc add 2 to continue
-fn supervisor_external(context: &mut Context) {
-    println!("External interrupt at 0x{:x}", context.sepc);
-    context.sepc += 2;
-}

@@ -16,7 +16,7 @@
 <span id="lab1"></span>
 ## Lab1
 ### 引言
-本文是本人在详细阅读` rCore-Tutorial Lab1 `的实验指导，并仔细分析了实验代码中` interrupt `部分的代码之后，结合` RISC-V `特权指令规范文档，按照实验指导中文档格式规范编写的学习报告，对` RISC-V `架构下中断处理机制做了一遍梳理，并结合代码来分析实验代码在中断机制这个模块中是怎么实现的。另外，本人对实验指导和实验源码中提出的几个思考作出了自己的看法，并提出了对源码中某处实现方式合理性的疑问和改进方法。最后，本人尝试在现有代码基础上，为实验代码实现中断嵌套调用的处理机制，包括提出实现思路和尝试修改代码实现。  
+本文是本人在详细阅读` rCore-Tutorial Lab1 `的实验指导，并仔细分析了实验代码中` interrupt `部分的代码之后，结合` RISC-V `特权指令规范文档，按照实验指导中文档格式规范编写的学习报告，对` RISC-V `架构下中断处理机制做了一遍梳理，并结合代码来分析实验代码在中断机制这个模块中是怎么实现的。另外，本人对实验指导和实验源码中提出的几个思考作出了自己的看法，并提出了对源码中某处实现方式合理性的疑问和改进方法。最后，本人尝试在现有代码基础上，为实验代码仿照` Linux `内核添加了中断描述符的逻辑，包括提出实现思路和尝试修改代码实现。  
 本次实验学习报告将紧密结合代码来进行对中断处理机制的梳理，中间穿插` RISC-V `架构知识，目的是通过实践代码来直观地理解操作系统是如何处理中断机制的。  
 
 ### 什么是中断
@@ -700,6 +700,22 @@ pub fn tick() {
 ```
 运行结果如下：  
 ![result](./img/result.png)  
+然后我们尝试让它中断嵌套：  
+```Rust
+pub fn breakpoint(context: &mut Context) {
+    println!("Breakpoint at 0x{:x}", context.sepc);
+    println!("Another breakpoint interrupt start");
+    unsafe {
+        llvm_asm!("ebreak"::::"volatile");
+    };
+    println!("Another breakpoint interrupt end");
+    context.sepc += 2;
+    //println!("breakpoint interrupt return");
+}
+```
+结果如下：  
+![result 01](./img/result_01.png)  
+可以看到程序陷入了无穷嵌套。  
 
 ### 思考
 在分析 Lab1 的代码过程中，遇到一些问题，其中包括在源码中注释的思考题，和我本人对实验代码提出的一些疑问。这里将会集中进行探讨。  
@@ -707,7 +723,22 @@ pub fn tick() {
 思考：` sscratch `的值最初是在什么地方写入的？  
 在前面提到：  
 在核（` hart `）运行用户态代码的时候，` sscratch `用来保存一个指向内核态上下文的指针。在` trap handler `的开始部分，` sscratch `和一个用户寄存器交换值来提供一个`initial working register`。  
-因此本人猜测` sscratch `的值最初是开机启动后操作系统运行第一个用户态程序的时候写入的。（不确定）  
+阅读` OpenSBI `代码，在以下文件中：  
+` OpenSBI/lib/sbi/sbi_hart.c `  
+```Rust
+if (next_mode == PRV_S) {
+		csr_write(CSR_STVEC, next_addr);
+		csr_write(CSR_SSCRATCH, 0);
+		csr_write(CSR_SIE, 0);
+		csr_write(CSR_SATP, 0);
+	} else if (next_mode == PRV_U) {
+		csr_write(CSR_UTVEC, next_addr);
+		csr_write(CSR_USCRATCH, 0);
+		csr_write(CSR_UIE, 0);
+	}
+```
+可以看出，在hart要切换MODE时，如果要切换到S态，那么将sscratch寄存器内写入0。  
+因此最初写入是在bootloader（OpenSBI）加载完毕，即将切换到操作系统内核时，这一特权级切换过程中写入的。  
 #### 思考题2
 思考：` a0 `是在哪里被赋值的？（有两种情况）  
 + 在进入函数` handle_interrupt `之前的参数准备阶段被赋值；
@@ -731,15 +762,8 @@ mv      sp, a0
 ```
 也就是说这里返回的指针必须指向内核栈的栈顶。  
 这不正反映了这个机制的不稳定性吗。  
-### 实现中断嵌套
-
 ### 小结
-
-
-
-
-
-
+终于做完 Lab1 了，比想像中还要花费精力。对 Lab1 的修改版本将会在另外的报告中说明。从这个实验中不仅加深了对` Rust `语言的理解，还亲身感受到了如何用Rust语言编写操作系统的，收益良多。剩下的实验继续加油。  
 
 
 <span id="lab2"></span>
