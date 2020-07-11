@@ -666,7 +666,41 @@ fn supervisor_timer(context: &mut Context) -> *mut Context {
 这样思路就很明了了：先是硬件发生时钟中断，然后设置` scause `为时钟中断对应的值，传递到中断处理函数` handle_interrupt `里面，然后根据` scause `执行处理时钟中断的函数，调用` tick（） `，最后中断返回。  
 
 ### 运行结果分析
-本人参考实验指导，并且结合自己的知识，一步步再现了实验代码的中断模块。下面对运行结果进行测试。  
+本人参考实验指导，并且结合自己的知识，一步步再现了实验代码的中断模块。下面对运行结果进行测试。项目代码：[lab1-interrupt](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab1/os)  
+在` main.rs `中加入死循环，让时钟中断一直触发：  
+` os/src/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 1");
+    //panic!("Hi,panic here...")
+    interrupt::init();
+
+    unsafe {
+        llvm_asm!("ebreak"::::"volatile");
+    };
+    //unreachable!();
+    loop{};
+}
+```
+在时钟中断处理函数` tick() `中打印当前中断计数：  
+` os/src/interrupt/timer.rs `
+```Rust
+pub fn tick() {
+    set_next_timeout();
+    unsafe {
+        TICKS += 1;
+        if TICKS % 100 == 0 {
+            println!("{} tick", TICKS);
+        }
+    }
+}
+```
+运行结果如下：  
+![result](./img/result.png)  
+
 ### 思考
 在分析 Lab1 的代码过程中，遇到一些问题，其中包括在源码中注释的思考题，和我本人对实验代码提出的一些疑问。这里将会集中进行探讨。  
 #### 思考题1

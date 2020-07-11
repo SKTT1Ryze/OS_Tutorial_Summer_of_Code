@@ -1,44 +1,43 @@
-//! 保存现场所用的 struct [`Context`]
+//! struct [`Context`] to save status
 
 use core::fmt;
 use core::mem::zeroed;
 use riscv::register::sstatus::{self, Sstatus, SPP::*};
 
-/// 发生中断时，保存的寄存器
+/// need to be saved registers
 ///
-/// 包括所有通用寄存器，以及：
-/// - `sstatus`：各种状态位
-/// - `sepc`：产生中断的地址
+/// x*
+/// - `sstatus`:saved status
+/// - `sepc`：address of interrupt occurs
 ///
-/// ### `#[repr(C)]` 属性
-/// 要求 struct 按照 C 语言的规则进行内存分布，否则 Rust 可能按照其他规则进行内存排布
+/// ### `#[repr(C)]` 
+/// arrange the memory like C
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Context {
-    /// 通用寄存器
+    /// x0~x31
     pub x: [usize; 32],
-    /// 保存诸多状态位的特权态寄存器
+    /// sstatus
     pub sstatus: Sstatus,
-    /// 保存中断地址的特权态寄存器
+    /// sepc
     pub sepc: usize,
 }
 
-/// 创建一个用 0 初始化的 Context
+/// create a context initialized with 0
 ///
-/// 这里使用 [`core::mem::zeroed()`] 来强行用全 0 初始化。
-/// 因为在一些类型中，0 数值可能不合法（例如引用），所以 [`zeroed()`] 是 unsafe 的
+/// use [`core::mem::zeroed()`] to initialized with 0
 impl Default for Context {
     fn default() -> Self {
         unsafe { zeroed() }
     }
 }
 
-/// 格式化输出
+/// format print
 ///
 /// # Example
 ///
 /// ```rust
-/// println!("{:x?}", Context);   // {:x?} 表示用十六进制打印其中的数值
+/// println!("{:x?}", Context);   // print with 0x....
 /// ```
 impl fmt::Debug for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -52,38 +51,38 @@ impl fmt::Debug for Context {
 
 #[allow(unused)]
 impl Context {
-    /// 获取栈指针
+    /// get sp
     pub fn sp(&self) -> usize {
         self.x[2]
     }
 
-    /// 设置栈指针
+    /// set sp
     pub fn set_sp(&mut self, value: usize) -> &mut Self {
         self.x[2] = value;
         self
     }
 
-    /// 获取返回地址
+    /// get return address
     pub fn ra(&self) -> usize {
         self.x[1]
     }
 
-    /// 设置返回地址
+    /// set return address
     pub fn set_ra(&mut self, value: usize) -> &mut Self {
         self.x[1] = value;
         self
     }
 
-    /// 按照函数调用规则写入参数
+    /// set arguments with function specification
     ///
-    /// 没有考虑一些特殊情况，例如超过 8 个参数，或 struct 空间展开
+    /// don't work for more than 8 arguments and struct spread
     pub fn set_arguments(&mut self, arguments: &[usize]) -> &mut Self {
         assert!(arguments.len() <= 8);
         self.x[10..(10 + arguments.len())].copy_from_slice(arguments);
         self
     }
 
-    /// 为线程构建初始 `Context`
+    /// creat initialized `Context` for thread
     pub fn new(
         stack_top: usize,
         entry_point: usize,
@@ -92,16 +91,16 @@ impl Context {
     ) -> Self {
         let mut context = Self::default();
 
-        // 设置栈顶指针
+        // set sp
         context.set_sp(stack_top).set_ra(-1isize as usize);
-        // 设置初始参数
+        // set arguments
         if let Some(args) = arguments {
             context.set_arguments(args);
         }
-        // 设置入口地址
+        // set entry point
         context.sepc = entry_point;
 
-        // 设置 sstatus
+        // set sstatus
         context.sstatus = sstatus::read();
         if is_user {
             context.sstatus.set_spp(User);

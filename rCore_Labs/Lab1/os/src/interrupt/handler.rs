@@ -4,54 +4,75 @@ use super::context::Context;
 use riscv::register::{
     stvec,
     sie,
-    scause::{Trap, Exception, Scause, Interrupt},
+    scause::{Exception, Interrupt, Scause, Trap},
 };
 
 global_asm!(include_str!("./interrupt.asm"));
 
-/// 初始化中断处理
+/// initialize interrupt handler
 ///
-/// 把中断入口 `__interrupt` 写入 `stvec` 中，并且开启中断使能
+/// set `__interrupt` to `stvec`, and enable interrupt
 pub fn init() {
     unsafe {
         extern "C" {
-            /// `interrupt.asm` 中的中断入口
+            /// interrupt entry point from `interrupt.asm`
             fn __interrupt();
         }
-        // 使用 Direct 模式，将中断入口设置为 `__interrupt`
+        // use Direct mode ，and set interrupt entry to __interrupt
         stvec::write(__interrupt as usize, stvec::TrapMode::Direct);
+
+        // enable external interrupt
+        sie::set_sext();
     }
 }
 
-/// 中断的处理入口
+/// entry of interrupt handler
 /// 
-/// `interrupt.asm` 首先保存寄存器至 Context，其作为参数和 scause 以及 stval 一并传入此函数
-/// 具体的中断类型需要根据 scause 来推断，然后分别处理
+/// `interrupt.asm` save Context, and spread as arguments with scause and stval
+/// type of interrupt judged from scause and treat in different ways
 #[no_mangle]
 pub fn handle_interrupt(context: &mut Context, scause: Scause, stval: usize) {
-    // 可以通过 Debug 来查看发生了什么中断
     // println!("{:x?}", context.scause.cause());
     match scause.cause() {
-        // 断点中断（ebreak）
+        // breakpoint interrupt（ebreak）
         Trap::Exception(Exception::Breakpoint) => breakpoint(context),
-        // 时钟中断
+        // system call
+        Trap::Exception(Exception::UserEnvCall) => syscall_handler(context),
+        // time interrupt
         Trap::Interrupt(Interrupt::SupervisorTimer) => supervisor_timer(context),
-        // 其他情况未实现
+        // External interrupt
+        Trap::Interrupt(Interrupt::SupervisorExternal) => supervisor_external(context),
+        // others unimplemented
         _ => unimplemented!("{:?}: {:x?}, stval: 0x{:x}", scause.cause(), context, stval),
     }
 }
 
-/// 处理 ebreak 断点
+/// handle ebreak interrupt
 /// 
-/// 继续执行，其中 `sepc` 增加 2 字节，以跳过当前这条 `ebreak` 指令
+/// continue: sepc add 2 to continue
 fn breakpoint(context: &mut Context) {
     println!("Breakpoint at 0x{:x}", context.sepc);
     context.sepc += 2;
 }
-
-/// 处理时钟中断
+/// handle system call
 /// 
-/// 目前只会在 [`timer`] 模块中进行计数
+/// continue: sepc add 2 to continue
+fn syscall_handler(context: &mut Context) {
+    println!("system call at 0x{:x}", context.sepc);
+    context.sepc += 2;
+}
+
+/// handle time interrupt
+/// 
+/// count in `tick()` and call a ebreak
 fn supervisor_timer(_: &Context) {
     timer::tick();
+}
+
+/// handle external interrupt
+/// 
+/// continue: sepc add 2 to continue
+fn supervisor_external(context: &mut Context) {
+    println!("External interrupt at 0x{:x}", context.sepc);
+    context.sepc += 2;
 }
