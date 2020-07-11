@@ -429,11 +429,24 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 ### 事件2：写Lab1学习报告
 [Lab1-report](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab1/Report/lab_1_report.md)  
 
-### 观看清华大学操作系统线上课程
+### 事件3：观看清华大学操作系统线上课程
 
 今天主要是仔细分析了Lab1代码和相关的中断处理过程，明天继续完善报告。  
 
+<span id="Day010</span>
 
+## Day 10 （2020-07-10）
+
+### 预期计划
++ 继续完善Lab1学习报告
+
+### 事件1：继续完善Lab1学习报告
+[Lab1-report](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab1/Report/lab_1_report.md)  
+
+### 事件2：动手实现一遍Lab1
+项目代码：[lab1-interrupt](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab1/os)  
+
+明天对Lab1进行改进。  
 
 
 
