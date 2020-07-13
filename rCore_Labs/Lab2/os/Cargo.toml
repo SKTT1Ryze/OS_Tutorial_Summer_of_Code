@@ -1,0 +1,23 @@
+[package]
+name = "os"
+version = "0.1.0"
+authors = ["hustccc <1276675421@qq.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
+buddy_system_allocator = "0.3.9"
+bit_field = "0.10.0"
+bitflags = "1.2.1"
+hashbrown = "0.7.2"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+spin = "0.5.2"
+
+# exit when panic occur
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
