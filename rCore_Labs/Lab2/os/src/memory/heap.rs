@@ -1,9 +1,3 @@
-/*
- * rCore Lab 2: Memory
- * hustccc
- * 2020/7/13
- * Manjaro
- */
 use super::config::KERNEL_HEAP_SIZE;
 use buddy_system_allocator::LockedHeap;
 /// Heap space for alloc memory

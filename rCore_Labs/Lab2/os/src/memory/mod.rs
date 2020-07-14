@@ -1,10 +1,3 @@
-/*
- * rCore Lab 2: Memory
- * hustccc
- * 2020/7/13
- * Manjaro
- */
-
 //! memory arrange mod
 //!
 //! used for alloc space and Virtual address mapping
@@ -12,6 +5,17 @@
 pub mod heap;
 pub mod config;
 pub mod address;
+pub mod frame;
+pub mod range;
+pub use {
+    address::*,
+    config::*,
+    frame::FRAME_ALLOCATOR,
+    range::Range,
+};
+
+/// short name for some functions in mods
+pub type MemoryResult<T> = Result<T, &'static str>;
 
 /// initialize son mod of memory
 ///

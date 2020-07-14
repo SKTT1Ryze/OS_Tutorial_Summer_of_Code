@@ -14,6 +14,7 @@ bitflags = "1.2.1"
 hashbrown = "0.7.2"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 spin = "0.5.2"
+algorithm = { path = 'src/algorithm' }
 
 # exit when panic occur
 [profile.dev]

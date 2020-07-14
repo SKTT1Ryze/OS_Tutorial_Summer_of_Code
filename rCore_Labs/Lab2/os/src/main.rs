@@ -60,8 +60,27 @@ pub extern "C" fn rust_main() -> ! {
     println!("head test passed");
     panic!()
     */
+    // test
+    /*
     println!("{}", *memory::config::KERNEL_END_ADDRESS);
     panic!()
+    */
+    // test
+    
+    for _ in 0..2 {
+        let frame_0 = match memory::FRAME_ALLOCATOR.lock().alloc() {
+            Result::Ok(frame_tracker) => frame_tracker,
+            Result::Err(err) => panic!("{}",err)
+        };
+        let frame_1 = match memory::FRAME_ALLOCATOR.lock().alloc() {
+            Result::Ok(frame_tracker) => frame_tracker,
+            Result::Err(err) => panic!("{}",err)
+        };
+        println!("{} and {}", frame_0.page_number(), frame_1.page_number());
+        println!("{} and {}", frame_0.address(), frame_1.address());
+    }    
+    panic!()
+    
 }
 
 

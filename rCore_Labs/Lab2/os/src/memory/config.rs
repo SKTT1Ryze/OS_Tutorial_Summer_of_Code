@@ -1,10 +1,3 @@
-/*
- * rCore Lab 2: Memory
- * hustccc
- * 2020/7/13
- * Manjaro
- */
-
 //! 定义一些内存相关的常量
 
 use super::address::*;
