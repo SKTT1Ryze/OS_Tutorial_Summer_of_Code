@@ -496,3 +496,15 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 ### 事件2：开始Lab2
 + 动态内存分配
 + 物理内存探测
+
+<span id="Day014"></span>
+
+## Day 14 （2020-07-14）
+
+### 预期计划
++ 完成Lab2
++ 写Lab2学习报告
+
+### 事件1：完成Lab2
+[Lab2](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab2/os)
+
