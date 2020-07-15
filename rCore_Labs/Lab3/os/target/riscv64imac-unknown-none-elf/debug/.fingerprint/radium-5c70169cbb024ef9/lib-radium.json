@@ -1,0 +1,1 @@
+{"rustc":11719010198259268628,"features":"[]","target":4031163801483850257,"profile":8826605187205572883,"path":18018046405282455089,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"riscv64imac-unknown-none-elf/debug/.fingerprint/radium-5c70169cbb024ef9/dep-lib-radium"}}],"rustflags":["-C","link-arg=-Tsrc/linker/linker.ld"],"metadata":10357167806502211000,"config":0}
