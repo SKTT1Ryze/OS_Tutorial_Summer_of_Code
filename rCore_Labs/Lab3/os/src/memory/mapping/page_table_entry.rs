@@ -1,14 +1,14 @@
+use crate::memory::address::*;
 /// page table entry for Sv39
 use bit_field::BitField;
 use bitflags::*;
-use crate::memory::address::*;
 
 bitflags! {
     /// 8 flags in page table entry
     #[derive(Default)]
     pub struct Flags: u8 {
         /// valid
-        const VALID = 1<< 0;
+        const VALID = 1 << 0;
         /// readable
         const READABLE = 1 << 1;
         /// writable
@@ -26,14 +26,13 @@ bitflags! {
     }
 }
 
-
 #[derive(Copy, Clone, Default)]
 pub struct PageTableEntry(usize);
 
 impl PageTableEntry {
     /// write page number and flags into a page table entry
     pub fn new(page_number: PhysicalPageNumber, flags: Flags) -> Self {
-        Self (
+        Self(
             *0usize
                 .set_bits(..8, flags.bits() as usize)
                 .set_bits(10..54, page_number.into()),
@@ -52,9 +51,7 @@ impl PageTableEntry {
 
     /// get flags
     pub fn flags(&self) -> Flags {
-        unsafe {
-            Flags::from_bits_unchecked(self.0.get_bits(..8) as u8)
-        }
+        unsafe { Flags::from_bits_unchecked(self.0.get_bits(..8) as u8) }
     }
 
     /// is empty or not
@@ -67,7 +64,7 @@ impl PageTableEntry {
         self.0 = 0;
     }
 
-    /// RWX -> 000
+    /// check RWX is 000 or not
     pub fn has_next_level(&self) -> bool {
         let flags = self.flags();
         !(flags.contains(Flags::READABLE)
@@ -90,9 +87,9 @@ impl core::fmt::Debug for PageTableEntry {
 macro_rules! implement_flags {
     ($field: ident, $name: ident, $quote: literal) => {
         impl Flags {
-            #[doc = "返回 `Flags::"]
+            #[doc = "return `Flags::"]
             #[doc = $quote]
-            #[doc = "` 或 `Flags::empty()`"]
+            #[doc = "` or `Flags::empty()`"]
             pub fn $name(value: bool) -> Flags {
                 if value {
                     Flags::$field

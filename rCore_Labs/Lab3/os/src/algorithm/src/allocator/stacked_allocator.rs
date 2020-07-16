@@ -1,4 +1,4 @@
-//! 提供栈结构实现的分配器 [`StackedAllocator`]
+//! A frame allocator based on Stack [`StackedAllocator`]
 
 use super::Allocator;
 use alloc::{vec, vec::Vec};

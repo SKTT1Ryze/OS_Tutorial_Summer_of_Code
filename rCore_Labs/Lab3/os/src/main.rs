@@ -66,7 +66,7 @@ pub extern "C" fn rust_main() -> ! {
     */
     // test
     /*
-    for _ in 0..2 {
+    for index in 0..30180 {
         let frame_0 = match memory::FRAME_ALLOCATOR.lock().alloc() {
             Result::Ok(frame_tracker) => frame_tracker,
             Result::Err(err) => panic!("{}",err)
@@ -75,13 +75,16 @@ pub extern "C" fn rust_main() -> ! {
             Result::Ok(frame_tracker) => frame_tracker,
             Result::Err(err) => panic!("{}",err)
         };
-        println!("{} and {}", frame_0.page_number(), frame_1.page_number());
-        println!("{} and {}", frame_0.address(), frame_1.address());
+        println!("index: {}, {} and {}", index, frame_0.page_number(), frame_1.page_number());
+        println!("index: {}, {} and {}", index, frame_0.address(), frame_1.address());
     }
     */
+    // test
+    
     let remap = memory::mapping::MemorySet::new_kernel().unwrap();
     remap.activate();
     println!("kernel has remapped");
+    
     panic!()
     
 }

@@ -1,64 +1,62 @@
-//! 定义地址类型和地址常量
+//! define type of address and constant
 //!
-//! 我们为虚拟地址和物理地址分别设立两种类型，利用编译器检查来防止混淆。
+//! define VirtualAddress and PhysicalAddress
 
 use super::config::{KERNEL_MAP_OFFSET, PAGE_SIZE};
 use bit_field::BitField;
 
-/// 虚拟地址
+/// VirtualAddress
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct VirtualAddress(pub usize);
 
-/// 物理地址
+/// PhysicalAddress
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PhysicalAddress(pub usize);
 
-/// 虚拟页号
+/// VirtualPageNumber
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct VirtualPageNumber(pub usize);
 
-/// 物理页号
+/// PhysicalPageNumber
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PhysicalPageNumber(pub usize);
 
-// 以下是一大堆类型的相互转换、各种琐碎操作
-
-/// 从指针转换为虚拟地址
+/// pointer to VirtualAddress
 impl<T> From<*const T> for VirtualAddress {
     fn from(pointer: *const T) -> Self {
         Self(pointer as usize)
     }
 }
-/// 从指针转换为虚拟地址
+/// mut pointer to VirtualAddress
 impl<T> From<*mut T> for VirtualAddress {
     fn from(pointer: *mut T) -> Self {
         Self(pointer as usize)
     }
 }
 
-/// 虚实页号之间的线性映射
+/// Linear mapping from PhysicalPageNumber to VirtualPageNumber
 impl From<PhysicalPageNumber> for VirtualPageNumber {
     fn from(ppn: PhysicalPageNumber) -> Self {
         Self(ppn.0 + KERNEL_MAP_OFFSET / PAGE_SIZE)
     }
 }
-/// 虚实页号之间的线性映射
+/// Linear mapping from VirtualPageNumber to PhysicalPageNumber
 impl From<VirtualPageNumber> for PhysicalPageNumber {
     fn from(vpn: VirtualPageNumber) -> Self {
         Self(vpn.0 - KERNEL_MAP_OFFSET / PAGE_SIZE)
     }
 }
-/// 虚实地址之间的线性映射
+/// Linear mapping from PhysicalAddress to VirtualAddress
 impl From<PhysicalAddress> for VirtualAddress {
     fn from(pa: PhysicalAddress) -> Self {
         Self(pa.0 + KERNEL_MAP_OFFSET)
     }
 }
-/// 虚实地址之间的线性映射
+/// Linear mapping from VirtualAddress to PhysicalAddress
 impl From<VirtualAddress> for PhysicalAddress {
     fn from(va: VirtualAddress) -> Self {
         Self(va.0 - KERNEL_MAP_OFFSET)
@@ -69,7 +67,7 @@ impl VirtualAddress {
     pub fn deref<T>(self) -> &'static mut T {
         unsafe { &mut *(self.0 as *mut T) }
     }
-    /// 取得页内偏移
+    /// get offset
     pub fn page_offset(&self) -> usize {
         self.0 % PAGE_SIZE
     }
@@ -79,26 +77,28 @@ impl PhysicalAddress {
     pub fn deref_kernel<T>(self) -> &'static mut T {
         VirtualAddress::from(self).deref()
     }
-    /// 取得页内偏移
+    /// get offset
     pub fn page_offset(&self) -> usize {
         self.0 % PAGE_SIZE
     }
 }
 impl VirtualPageNumber {
     /// 从虚拟地址取得页面
+    /// get page from VirtualAddress
     pub fn deref(self) -> &'static mut [u8; PAGE_SIZE] {
         VirtualAddress::from(self).deref()
     }
 }
 impl PhysicalPageNumber {
     /// 从物理地址经过线性映射取得页面
+    /// get page from PhysicalAddress
     pub fn deref_kernel(self) -> &'static mut [u8; PAGE_SIZE] {
         PhysicalAddress::from(self).deref_kernel()
     }
 }
 
 impl VirtualPageNumber {
-    /// 得到一、二、三级页号
+    /// get level 1, 2, 3 page number
     pub fn levels(self) -> [usize; 3] {
         [
             self.0.get_bits(18..27),

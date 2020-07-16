@@ -137,6 +137,7 @@ impl MemorySet {
     }
 
     /// 添加一个 [`Segment`] 的内存映射
+    /// add a [`Segment`] mapping
     pub fn add_segment(&mut self, segment: Segment, init_data: Option<&[u8]>) -> MemoryResult<()> {
         // 检测 segment 没有重合
         assert!(!self.overlap_with(segment.page_range()));
@@ -148,8 +149,9 @@ impl MemorySet {
     }
 
     /// 移除一个 [`Segment`] 的内存映射
-    ///
+    /// remove a [`Segment`] mapping
     /// `segment` 必须已经映射
+    /// `segment` must has been mapped
     pub fn remove_segment(&mut self, segment: &Segment) -> MemoryResult<()> {
         // 找到对应的 segment
         let segment_index = self

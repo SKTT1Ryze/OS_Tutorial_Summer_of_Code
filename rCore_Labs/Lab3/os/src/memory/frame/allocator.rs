@@ -8,7 +8,6 @@ use algorithm::*;
 use lazy_static::*;
 use spin::Mutex;
 
-
 lazy_static! {
     /// frame allocator
     pub static ref FRAME_ALLOCATOR: Mutex<FrameAllocator<AllocatorImpl>> = Mutex::new(FrameAllocator::new(Range::from(
@@ -26,6 +25,7 @@ pub struct FrameAllocator<T: Allocator> {
 
 impl<T: Allocator> FrameAllocator<T> {
     pub fn new(range: impl Into<Range<PhysicalPageNumber>>+Copy) -> Self {
+        println!("Allocator size: {}", range.into().len());
         FrameAllocator {
             start_ppn: range.into().start,
             allocator: T::new(range.into().len()),
