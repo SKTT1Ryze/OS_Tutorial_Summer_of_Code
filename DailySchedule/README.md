@@ -521,6 +521,23 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 ### 事件1：完成Lab3
 项目地址：[Lab3](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab3/os)  
 
+### 准备改进Lab2和Lab3
+
+<span id="Day016"></span>
+
+## Day 16 （2020-07-16）
+
+### 预期计划
++ 改进Lab2和Lab3
++ 准备Lab4
+
+### 事件1：改进Lab2和Lab3
++ 实现一个分配器
++ 思考Lab2和Lab3不足之处
+项目地址：[Lab3](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab3/os)  
+### 事件2：准备Lab4
+
+
 
 
 
