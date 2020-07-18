@@ -1,0 +1,1 @@
+{"rustc":11719010198259268628,"features":"[]","target":16754628301399686335,"profile":13134100034870027236,"path":13976105430157774606,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"riscv64imac-unknown-none-elf/debug/.fingerprint/volatile-7091e82015bd4da0/dep-lib-volatile"}}],"rustflags":["-C","link-arg=-Tsrc/linker/linker.ld"],"metadata":7179546619508517661,"config":0}
