@@ -24,7 +24,7 @@ pub struct Thread {
 pub struct ThreadInner {
     /// Context
     pub context: Option<Context>,
-    /// is sleep
+    /// is sleep or not
     pub sleeping: bool,
 }
 
@@ -33,7 +33,7 @@ impl Thread {
     /// 
     /// activate page table and return Context
     pub fn prepare(&self) -> *mut Context {
-        // active page table
+        // activate page table
         self.process.write().memory_set.activate();
         // get Context
         let parked_frame = self.inner().context.take().unwrap();
@@ -76,7 +76,6 @@ impl Thread {
                 sleeping: false,
             }),
         });
-
         Ok(thread)
     }
     /// stop thread when time interrupt occur, and save Context

@@ -51,29 +51,27 @@ pub extern "C" fn rust_main() -> ! {
     memory::init();
 
     // test for alloc space
-    /*
+    
     use alloc::boxed::Box;
     use alloc::vec::Vec;
     let v = Box::new(5);
     assert_eq!(*v, 5);
     core::mem::drop(v);
     let mut vec = Vec::new();
-    for i in 0..10000 {
+    for i in 0..100 {
         vec.push(i);
     }
-    assert_eq!(vec.len(), 10000);
+    assert_eq!(vec.len(), 100);
     for (i, value) in vec.into_iter().enumerate() {
         assert_eq!(value, i);
     }
     println!("head test passed");
-    */
+    
     // test
-    /*
-    println!("{}", *memory::config::KERNEL_END_ADDRESS);
-    */
+    //println!("{}", *memory::config::KERNEL_END_ADDRESS);
     // test
-    /*
-    for index in 0..30180 {
+    
+    for index in 0..2 {
         let frame_0 = match memory::FRAME_ALLOCATOR.lock().alloc() {
             Result::Ok(frame_tracker) => frame_tracker,
             Result::Err(err) => panic!("{}",err)
@@ -83,18 +81,19 @@ pub extern "C" fn rust_main() -> ! {
             Result::Err(err) => panic!("{}",err)
         };
         println!("index: {}, {} and {}", index, frame_0.page_number(), frame_1.page_number());
-        println!("index: {}, {} and {}", index, frame_0.address(), frame_1.address());
+        //println!("index: {}, {} and {}", index, frame_0.address(), frame_1.address());
     }
-    */
+    panic!("end of rust_main");
     // test
     /*
     let remap = memory::mapping::MemorySet::new_kernel().unwrap();
     remap.activate();
     println!("kernel has remapped");
     panic!()
-    */  
+    */
 
     // test 
+    /*
     let process = Process::new_kernel().unwrap();
     for message in 0..8 {
         let thread = Thread::new(
@@ -106,6 +105,7 @@ pub extern "C" fn rust_main() -> ! {
     }
     drop(process);
     PROCESSOR.get().run();
+    */
 }
 
 fn sample_process(message: usize) {

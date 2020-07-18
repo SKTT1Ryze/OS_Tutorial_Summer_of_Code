@@ -16,26 +16,26 @@ lazy_static! {
 ///
 /// # 用例
 /// ### 初始化并运行第一个线程
-/// ```rust
+/// ```Rust
 /// processor.add_thread(thread);
 /// processor.run();
 /// unreachable!();
 /// ```
 ///
 /// ### 切换线程（在中断中）
-/// ```rust
+/// ```Rust
 /// processor.park_current_thread(context);
 /// processor.prepare_next_thread()
 /// ```
 ///
 /// ### 结束线程（在中断中）
-/// ```rust
+/// ```Rust
 /// processor.kill_current_thread();
 /// processor.prepare_next_thread()
 /// ```
 ///
 /// ### 休眠线程（在中断中）
-/// ```rust
+/// ```Rust
 /// processor.park_current_thread(context);
 /// processor.sleep_current_thread();
 /// processor.prepare_next_thread()
@@ -43,7 +43,7 @@ lazy_static! {
 ///
 /// ### 唤醒线程
 /// 线程会根据调度器分配执行，不一定会立即执行。
-/// ```rust
+/// ```Rust
 /// processor.wake_thread(thread);
 /// ```
 #[derive(Default)]
@@ -85,7 +85,7 @@ impl Processor {
         unreachable!()
 
     }
-
+    
     /// activate `Context` of next thread
     pub fn prepare_next_thread(&mut self) -> *mut Context {
         loop {
@@ -109,6 +109,7 @@ impl Processor {
             }
         }
     }
+    
     /// add a thread
     pub fn add_thread(&mut self, thread: Arc<Thread>) {
         if self.current_thread.is_none() {
@@ -128,7 +129,7 @@ impl Processor {
     pub fn park_current_thread(&mut self, context: &Context) {
         self.current_thread().park(*context);
     }
-    
+
     /// make current thread sleep
     pub fn sleep_current_thread(&mut self) {
         // get current thread

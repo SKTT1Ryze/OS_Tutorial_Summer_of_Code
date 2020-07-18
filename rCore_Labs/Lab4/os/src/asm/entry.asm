@@ -26,6 +26,7 @@ _start:
     lui sp, %hi(boot_stack_top)
     addi sp, sp, %lo(boot_stack_top)
     # 跳转至 rust_main
+    # 这里同时伴随 hart 和 dtb_pa 两个指针的传入（是 OpenSBI 帮我们完成的）
     lui t0, %hi(rust_main)
     addi t0, t0, %lo(rust_main)
     jr t0
@@ -44,12 +45,16 @@ boot_stack_top:
     # 初始内核映射所用的页表
     .section .data
     .align 12
+    .global boot_page_table
 boot_page_table:
     .quad 0
     .quad 0
     # 第 2 项：0x8000_0000 -> 0x8000_0000，0xcf 表示 VRWXAD 均为 1
     .quad (0x80000 << 10) | 0xcf
-    .zero 507 * 8
+    .zero 505 * 8
+    # 第 508 项：0xffff_ffff_0000_0000 -> 0x0000_0000，0xcf 表示 VRWXAD 均为 1
+    .quad (0x00000 << 10) | 0xcf
+    .quad 0
     # 第 510 项：0xffff_ffff_8000_0000 -> 0x8000_0000，0xcf 表示 VRWXAD 均为 1
     .quad (0x80000 << 10) | 0xcf
     .quad 0
