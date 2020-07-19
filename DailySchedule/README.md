@@ -537,7 +537,34 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 项目地址：[Lab3](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab3/os)  
 ### 事件2：准备Lab4
 
+<span id="Day017"></span>
 
+## Day 17 （2020-07-17）
 
+### 预期计划
++ 观看清华大学操作系统线上课程进程部分的内容
++ 开始Lab4
+
+### 事件1：观看清华大学操作系统线上课程进程部分的内容
++ 进程和线程
++ 进程和线程控制
++ 处理机调度
++ 多处理机调度
++ 同步互斥
++ 信号量和管程
++ 死锁和并发错误检测
+
+### 事件2：开始Lab4
+
+<span id="Day018"></span>
+
+## Day 18 （2020-07-18）
+### 预期计划
++ 完成Lab4
++ 实现新的调度算法
+### 事件1：完成Lab4
+项目地址：[Lab4](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab4/os)  
+
+### 事件2：实现新的调度算法
 
 
