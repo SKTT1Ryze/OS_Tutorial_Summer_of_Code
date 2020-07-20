@@ -5,7 +5,7 @@ use bit_field::BitArray;
 use core::cmp::min;
 
 /// Bitmap 中的位数（4K）
-const BITMAP_SIZE: usize = 4096;
+const BITMAP_SIZE: usize = 4096*8;
 
 /// 向量分配器的简单实现，每字节用一位表示
 pub struct BitmapVectorAllocator {
