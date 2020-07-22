@@ -593,3 +593,17 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 源码地址：[buddy_system](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab4/os/src/algorithm/src/allocator/buddy_system_vector_allocator.rs)  
 
 ### 事件2：学习K210开发板
+
+<span id="Day021"></span>
+
+## Day 21 （2020-07-21）
+### 预期计划
++ 完成Lab3和Lab4实验题
++ 继续学习k210开发板
+
+### 事件1：完成Lab3和Lab4实验题
+实现`Stride Scheduler`
+
+### 事件2：完成k210开发板的开发环境配置
+准备实验一下吴一凡学长写的支持k210的Lab0
+
