@@ -115,7 +115,8 @@ impl Processor {
         if self.current_thread.is_none() {
             self.current_thread = Some(thread.clone());
         }
-        self.scheduler.add_thread(thread, 0);
+        let priority = thread.priority;
+        self.scheduler.add_thread(thread, priority);
     }
 
     /// wake a thread

@@ -2,16 +2,16 @@
 
 use super::*;
 use core::hash::{Hash,Hasher};
-
 // ID of thread, `isize`, negetive defines error
 pub type ThreadID = isize;
-
 static mut THREAD_COUNTER: ThreadID = 0;
 
 /// TCB
 pub struct Thread {
     /// ID
     pub id: ThreadID,
+    /// priority
+    pub priority: usize,
     /// Stack
     pub stack: Range<VirtualAddress>,
     /// process belonged
@@ -49,6 +49,7 @@ impl Thread {
         process: Arc<RwLock<Process>>,
         entry_point: usize,
         arguments: Option<&[usize]>,
+        priority: usize,
     ) -> MemoryResult<Arc<Thread>> {
         // 让所属进程分配并映射一段空间，作为线程的栈
         let stack = process
@@ -69,6 +70,7 @@ impl Thread {
                 THREAD_COUNTER += 1;
                 THREAD_COUNTER
             },
+            priority: priority,
             stack,
             process,
             inner: Mutex::new(ThreadInner {
