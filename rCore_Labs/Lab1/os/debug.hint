@@ -1,0 +1,4 @@
+make run
+riscv64-unknown-elf-gdb
+file target/riscv64imac-unknown-none-elf/debug/os
+target remote localhost:1234
