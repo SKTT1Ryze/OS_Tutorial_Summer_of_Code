@@ -192,6 +192,7 @@ pub fn init() {
 ```
 上面提到过我们需要将中断入口写入到` stvec `中，实现一步的就是上面代码中的这一行：  
 ` os/src/interrupt/handler.rs `  
+
 ```Rust
 stvec::write(__interrupt as usize, stvec::TrapMode::Direct);
 ```
@@ -778,8 +779,14 @@ mv      sp, a0
 + 通过页的方式对物理内存进行管理
 ### 实验过程
 #### 动态内存分配
-为了解决外碎片问题，这里使用了伙伴系统内存分配算法。  
-直接调用王嘉杰学长写的` Buddy System Allocator`  
+显然，我们不能直接使用 Rust 标准库提供的动态内存分配功能，我们只能够自己实现。为此，我们需要实现 ` Trait GlobalAlloc `，将这个类实例化，并用语义项` #[global_allocator] `进行标记。这样使得编译器知道该怎样使用我们提供的内存分配函数进行动态内存分配。  
+实现` Trait GlobalAlloc `需要支持下面这两个函数：  
+```Rust
+unsafe fn alloc(&self, layout: Layout) -> *mut u8;
+unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
+```
+内存分配要解决一个问题：外碎片。我们在 OS 课上已经学过一些算法来解决这些外碎片问题，在这里，我们选择了伙伴系统内存分配算法。  
+我们开辟一个静态的 8M 大小的数组作为堆分配的空间，然后直接调用王嘉杰学长写的` Buddy System Allocator`  
 ` os/src/memory/heap.rs `  
 ```Rust
 use super::config::KERNEL_HEAP_SIZE;
@@ -814,9 +821,69 @@ fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
     panic!("Alloc error")
 }
 ```
+其中` HEAP_SPACE `就是作为堆的静态地址空间。  
 这里主要就是调库，然后告诉编译器使用定义的一段空间作为预留的堆，而`LockedHeap`实现了`alloc::alloc::GlobalAlloc` trait。  
-同时本人也写了一个 Buddy System 的 demo，会在另外的报告中介绍。  
+如果想实现自己写的连续内存分配算法的话，则将` heap.rs `文件换为以下的内容：  
+```Rust
+use super::config::KERNEL_HEAP_SIZE;
+use algorithm::{VectorAllocator, VectorAllocatorImpl};
+use core::cell::UnsafeCell;
+
+/// 进行动态内存分配所用的堆空间
+///
+/// 大小为 [`KERNEL_HEAP_SIZE`]
+/// 这段空间编译后会被放在操作系统执行程序的 bss 段
+static mut HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+
+#[global_allocator]
+static HEAP: Heap = Heap(UnsafeCell::new(None));
+
+/// Heap 将分配器封装并放在 static 中。它不安全，但在这个问题中不考虑安全性
+struct Heap(UnsafeCell<Option<VectorAllocatorImpl>>);
+
+/// 利用 VectorAllocator 的接口实现全局分配器的 GlobalAlloc trait
+unsafe impl alloc::alloc::GlobalAlloc for Heap {
+    unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
+        //println!("alloc in heap.rs");
+        let offset = (*self.0.get())
+            .as_mut()
+            .unwrap()
+            .alloc(layout.size(), layout.align())
+            .expect("Heap overflow");
+        //println!("alloc finish in heap.rs");
+        &mut HEAP_SPACE[offset] as *mut u8
+    }
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: core::alloc::Layout) {
+        //println!("dealloc in heap.rs");
+        let offset = ptr as usize - &HEAP_SPACE as *const _ as usize;
+        (*self.0.get())
+            .as_mut()
+            .unwrap()
+            .dealloc(offset, layout.size(), layout.align());
+        //println!("dealloc finish in heap.rs");
+    }
+}
+
+unsafe impl Sync for Heap {}
+
+/// 初始化操作系统运行时堆空间
+pub fn init() {
+    // 告诉分配器使用这一段预留的空间作为堆
+    unsafe {
+        (*HEAP.0.get()).replace(VectorAllocatorImpl::new(KERNEL_HEAP_SIZE));
+    }
+}
+
+/// 空间分配错误的回调，直接 panic 退出
+#[alloc_error_handler]
+fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
+    panic!("alloc error")
+}
+```
+然后具体分配算法需要在` algorithm::allocator `里面实现，本人也写了一个 Buddy System 的 demo，会在另外的报告中介绍。  
 #### 物理内存探测
+什么是物理内存探测？  
+物理地址访问的是一片地址空间，但是它访问的不仅仅是 REAM，还包括其他外设。许多指令集都是通过 MMIO 技术将外设映射到一段物理地址，达到访问外设的目的。  
 在 RISC-V 中，操作系统通过 bootloader，即 OpenSBI 固件来知道物理内存所在的物理地址。它完成对于包括物理内存在内的所有外设的扫描，将扫描结果以 DTB 的格式保存在物理内存中的某个地方，然后将其地址保存在` a1 `寄存器中返回。  
 我们使用 [0x80000000, 0x88000000]作为 DRAM 物理内存地址范围。  
 下面将 DRAM 物理内存结束地址硬编码到内核中：  
@@ -842,8 +909,9 @@ extern "C" {
     fn kernel_end();
 }
 ```
-我们得到了内核的结束虚拟地址` KERNEL_END_ADDRESS `  
+这样，我们得到了内核的结束虚拟地址` KERNEL_END_ADDRESS `，注意，这是一个` VirtualAddress `的类，区别于` PhyscialAddress `。我们在` os/src/memory/address.rs `中封装了` PhyscialAddress `和` VirtualAddress `两个类，分别对应于物理地址和虚拟地址，对两者实现了一系列的加，减，转换等操作。  
 #### 物理内存管理
+我们在 OS 课上已经学习过物理页面的概念，这里不再讲述原理。  
 我们将用一个新的结构来封装一下物理页，便于和其他类型地址区分和同时封装一些页帧和地址相互转换的功能。  
 相关设置：  
 ` os/src/memory/config.rs `
@@ -900,6 +968,7 @@ impl core::ops::DerefMut for FrameTracker {
 }
 ```
 分配器分配` FrameTracker `这个结构作为一个帧的标识，随着操作系统不再需要这个物理页，我们需要回收，这里利用 Rust 的 drop 机制在生命周期结束的时候自动实现回收。  
+注意到` impl core::ops::Deref for FrameTracker `和` impl core::ops::DerefMut for FrameTracker `，这两者让` FrameTracker ` 可以 deref 得到对应的 ` [u8; PAGE_SIZE] `，这意味着对` FrameTracker `解引用的时候将会返回一个数组，大小为前面定义的页面大小。在更底层的代码，这是用 unsafe 代码实现的。  
 最后封装一个物理页分配器，具体算法用` Allocator `的 trait 封装起来，具体实现在` os/src/algorithm/src/allocator `中。  
 ` os/src/memory/frame/allocator.rs `
 ```Rust
@@ -952,7 +1021,7 @@ impl<T: Allocator> FrameAllocator<T> {
     }
 }
 ```
-这个分配器会以一个` PhysicalPageNumber `的 Range 初始化，然后把起始地址记录下来，把整个区间的长度告诉具体的分配器算法，当分配的时候就从算法中取得一个可用的位置作为 offset，再加上起始地址返回回去。  
+这个分配器会以一个` PhysicalPageNumber `的 Range 初始化，然后把起始地址记录下来，把整个区间的长度告诉具体的分配器算法，当分配的时候就从算法中取得一个可用的位置作为 offset，再加上起始地址返回回去。而分配器算法在` os/src/algorithm/src/allocator `中实现，通过这个 trait 的接口，我们可以很方便地实现自己的分配器算法。本人在这基础之上实现了 free list 分配算法。  
 ` Allocator `trait 如下：  
 ```Rust
 /// 分配器：固定容量，每次分配 / 回收一个元素
@@ -965,7 +1034,7 @@ pub trait Allocator {
     fn dealloc(&mut self, index: usize);
 }
 ```
-同时还定义了一个可以分配连续帧的` VectorAllocator `trait，这里不多进行讨论：  
+同时还定义了一个可以分配连续帧的` VectorAllocator `trait，这个是用于连续内存分配的分配器，用于给之前提到的自己编写的连续内存分配算法提供接口。  
 ```Rust
 /// 分配器：固定容量，每次分配 / 回收指定大小的元素
 pub trait VectorAllocator {
@@ -977,21 +1046,73 @@ pub trait VectorAllocator {
     fn dealloc(&mut self, start: usize, size: usize, align: usize);
 }
 ```
+### 测试
+` os/src/main.rs   
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 2");
+    interrupt::init();
+    memory::init();
+    for _ in 0..2 {
+        let frame_0 = match memory::FRAME_ALLOCATOR.lock().alloc() {
+            Result::Ok(frame_tracker) => frame_tracker,
+            Result::Err(err) => panic!("{}",err)
+        };
+        let frame_1 = match memory::FRAME_ALLOCATOR.lock().alloc() {
+            Result::Ok(frame_tracker) => frame_tracker,
+            Result::Err(err) => panic!("{}",err)
+        };
+        println!("{} and {}", frame_0.page_number(), frame_1.page_number());
+        println!("{} and {}", frame_0.address(), frame_1.address());
+    }    
+    panic!()
+}
+```
+运行结果：  
+```
+Platform Name          : QEMU Virt Machine
+Platform HART Features : RV64ACDFIMSU
+Platform Max HARTs     : 8
+Current Hart           : 0
+Firmware Base          : 0x80000000
+Firmware Size          : 116 KB
+Runtime SBI Version    : 0.2
+
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+Hello, rCore-Tutorial!
+I have done Lab 2
+mod interrupt initialized
+mod memory initialized
+PhysicalPageNumber(0x80a1e) and PhysicalPageNumber(0x80a1f)
+PhysicalAddress(0x80a1e000) and PhysicalAddress(0x80a1f000)
+PhysicalPageNumber(0x80a1e) and PhysicalPageNumber(0x80a1f)
+PhysicalAddress(0x80a1e000) and PhysicalAddress(0x80a1f000)
+
+```
 ### 小结
 Lab2 主要是实现了操作系统的内存管理模块，通过这次实验，最大的收获是了解了如何在 Rust 中使用 trait 对某个结构体的行为进行抽象。  
+除此之外，在本次实验中我实现了 free list 分配算法和伙伴系统连续内存分配算法，十分锻炼了 Rust 编程能力。  
 <span id="lab3"></span>
 ## Lab3
 ### 引言
-到目前为止，我们简易的操作系统还只是一个内核在执行，还没有多任务的概念。在现代的操作系统中，为了让其他的程序能方便的运行在操作系统上，需要完成的一个很重要的抽象是「每个程序有自己的地址空间，且地址空间范围是一样的」，这将会减少了上层程序的大量麻烦，否则程序本身要维护自己需要的物理内存，这也会导致极大程度的不安全。  
-操作系统为了解决这个问题，使用了虚拟地址。  
+在现代的操作系统中，为了让其他的程序能方便的运行在操作系统上，需要完成的一个很重要的抽象是「每个程序有自己的地址空间，且地址空间范围是一样的」。在 OS 原理课中也提到过，我们想要达到的目标是每个进程都有着自己独立的内存空间，而同时又能实现内存空间的共享，以节省内存。  
+现代操作系统为了解决这个问题，实现物理地址到虚拟地址的转换。  
 ### 实验内容
 + 虚拟地址和物理地址的概念和关系
 + 利用页表完成虚拟地址到物理地址的映射
 + 实现内核的重映射
 ### 实验过程
 #### 从虚拟地址到物理地址
-虚拟地址和物理地址的概念在操作系统课上已经学过，这里不多加讨论。实现方法参考` os/src/memory/address.rs `  
+在使用了虚拟地址的系统中，用户看到的进程空间是虚拟地址空间，是连续的，而操作系统负责通过页表将虚拟内存空间映射到物理内存空间，而物理内存空间是不连续的。同时页表的维护也是操作系统来做。  
+在 rCore-Tutorial 中使用 Sv39 模式来作为页表的实现。  
+在 Sv39 模式中，定义物理地址有 56 位，虚拟地址有 64 位，但只有低 39 位有效。  
+关于虚拟地址到物理地址的转换过程 OS 原理课上已经有很详细的讲解，这里不多加阐述。  
 #### 修改内核
+之前实现的内核并未实现页表机制，内核空间等同于物理地址空间，这样设计比较简单，但很显然不能支持多个用户进程并发执行和起到用户进程空间隔离的作用。因此我们需要修改一下内核。  
 将内核代码放在虚拟地址空间中以 0xffffffff80200000 开头的一段高地址空间中。这意味着原来放在 0x80200000 起始地址的全部内核结构被平移到了 0xffffffff80200000 的地址上。  
 ` os/src/linker.ld `  
 ```Rust
@@ -1060,7 +1181,17 @@ SECTIONS
     kernel_end = .;
 }
 ```
-我们需要告诉 RISC-V CPU 我们做了这些修改，也就是需要在启动时、在进入 rust_main 之前我们要完成一个从物理地址访存模式到虚拟访存模式的转换，同时这也意味着，我们要写一个简单的页表，完成这个线性映射：  
+同时我们需要在` os/src/memory/config.rs `中将` KERNEL_END_ADDRESS `修改为虚拟地址并加入偏移量：  
+` os/src/memory/config.rs `  
+```Rust
+lazy_static! {
+    pub static ref KERNEL_END_ADDRESS: VirtualAddress = VirtualAddress(kernel_end as usize); 
+}
+
+/// offset
+pub const KERNEL_MAP_OFFSET: usize = 0xffff_ffff_0000_0000;
+```
+我们要写一个简单的页表，完成这个线性映射，告诉 RISC-V CPU 我们做了这些修改：  
 ` os/src/entry.asm `  
 ```Rust
 # 操作系统启动时所需的指令以及字段
@@ -1239,6 +1370,21 @@ implement_flags! {WRITABLE, writable, "WRITABLE"}
 implement_flags! {EXECUTABLE, executable, "EXECUTABLE"}
 
 ```
+其中封装了获得物理页号，获得物理地址，获得标志位，获得下一级页表的页号等等。  
+下面这个在` os/src/memory/address/rs `中的函数从一个虚拟页号获得三级 VPN：  
+` os/src/memory/address/rs `  
+```Rust
+impl VirtualPageNumber {
+    /// 得到一、二、三级页号
+    pub fn levels(self) -> [usize; 3] {
+        [
+            self.0.get_bits(18..27),
+            self.0.get_bits(9..18),
+            self.0.get_bits(0..9),
+        ]
+    }
+}
+```
 有了页表项，可以很容易地对页表进行封装：  
 ` os/src/memory/mapping/page_table.rs `  
 ```Rust
@@ -1318,10 +1464,16 @@ impl PageTableEntry {
         self.address().deref_kernel()
     }
 }
-
 ```
+这里我们利用一个` PageTableTracker `的结构对` FrameTracker `进行封装，同时` PageTableTracker `和` PageTableEntry `能实现 Rust 中的自动解引用的特性。  
 #### 实现内核重映射
-为了实现内核重映射，我们需要对内存段进行封装：  
+我们之前的内核映射实在是简陋无比，现在我们将对它进行规范化。  
+一个整洁的映射应该有以下的分段：  
++ .text，存放代码
++ .rodata，存放只读数据
++ .data，存放经过初始化的数据
++ .bss，存放未初始化或零初始化的数据
+因此，为了实现内核重映射，我们需要封装一个叫做“内存段”的概念：  
 ` os/src/memory/mapping/segment.rs `  
 ```Rust
 //! [`MapType`] and [`Segment`]
@@ -1368,10 +1520,136 @@ impl Segment {
 }
 
 ```
-有了页表、内存段，我们对这两个进行组合和封装，借助其中对页表的操作实现对内存段的映射，然后实现对页表的查找，实现一个虚拟页对物理页的映射，最后实现一个联系的段的映射：  
+其中` iter_mapped `是一个迭代器，它会遍历对应的物理地址（如果可能）。  
+有了页表、内存段，我们对这两个进行组合和封装，借助其中对页表的操作实现对内存段的映射，然后实现对页表的查找，实现一个虚拟页对物理页的映射，最后实现一个连续的段空间的映射：  
 ` os/src/memory/mapping/mapping.rs `  
-代码太长，这里不贴出来。  
-最后对内核进行重映射：  
+找到给定虚拟页号的三级页表项：  
+```Rust
+/// find 3 level page table entry
+    /// 
+    /// if not found, create one
+    pub fn find_entry(&mut self, vpn: VirtualPageNumber) -> MemoryResult<&mut PageTableEntry> {
+        // search from root page table
+        let root_table: &mut PageTable = PhysicalAddress::from(self.root_ppn).deref_kernel();
+        // level 3 page table entry
+        let mut entry = &mut root_table.entries[vpn.levels()[0]];
+        for vpn_slice in &vpn.levels()[1..] {
+            if entry.is_empty() {
+                // if page table not exist, alloc one
+                let new_table = PageTableTracker::new(FRAME_ALLOCATOR.lock().alloc()?);
+                let new_ppn = new_table.page_number();
+                // write page number of new table in current page table entry
+                *entry = PageTableEntry::new(new_ppn, Flags::VALID);
+                // save new page table
+                self.page_tables.push(new_table);
+            }
+            // enter next level page table
+            entry = &mut entry.get_next_table().entries[*vpn_slice];
+        }
+        Ok(entry)
+    }
+```
+这段代码通过对` &vpn.levels()[1..] `进行遍历，如果最终找到了对应的页表项，夹在Ok()中返回，否则将会创建相应的页表。  
+为给定的虚拟页号和物理页号创建映射关系：  
+```Rust
+/// create mapping relation between VirtualPageNumber and PhysicalPageNumber
+    fn map_one(
+        &mut self,
+        vpn: VirtualPageNumber,
+        ppn: PhysicalPageNumber,
+        flags: Flags,
+    ) -> MemoryResult<()> {
+        // get page table entry
+        let entry = self.find_entry(vpn)?;
+        assert!(entry.is_empty(), "virtual mapped");
+        // page table entry is empty, write ppn
+        *entry = PageTableEntry::new(ppn,flags);
+        Ok(())
+    }
+```
+实现对一个连续的段进行映射：  
+```Rust
+pub fn map(
+        &mut self,
+        segment: &Segment,
+        init_data: Option<&[u8]>,
+    ) -> MemoryResult<Vec<(VirtualPageNumber, FrameTracker)>> {
+        match segment.map_type {
+            // linear mapping
+            MapType::Linear => {
+                for vpn in segment.page_range().iter() {
+                    self.map_one(vpn, vpn.into(), segment.flags | Flags::VALID)?;
+                }
+                // clone data
+                if let Some(data) = init_data {
+                    unsafe {
+                        (&mut *slice_from_raw_parts_mut(segment.range.start.deref(), data.len()))
+                            .copy_from_slice(data);
+                    }
+                }
+                Ok(Vec::new())
+            }
+            // framed mapping
+            MapType::Framed => {
+                // 记录所有成功分配的页面映射
+                let mut allocated_pairs = Vec::new();
+                for vpn in segment.page_range().iter() {
+                    // alloc physical page
+                    let mut frame = FRAME_ALLOCATOR.lock().alloc()?;
+                    // map, write zero, record
+                    self.map_one(vpn, frame.page_number(), segment.flags | Flags::VALID)?;
+                    frame.fill(0);
+                    allocated_pairs.push((vpn,frame));
+                }
+
+                // clone data
+                if let Some(data) = init_data {
+                    if !data.is_empty() {
+                        for (vpn, frame) in allocated_pairs.iter_mut() {
+                            // 拷贝时必须考虑区间与整页不对齐的情况
+                            //    start（仅第一页时非零）
+                            //      |        stop（仅最后一页时非零）
+                            // 0    |---data---|          4096
+                            // |------------page------------|
+                            let page_address = VirtualAddress::from(*vpn);
+                            let start = if segment.range.start > page_address {
+                                segment.range.start - page_address
+                            }
+                            else {
+                                0
+                            };
+                            let stop = min(PAGE_SIZE, segment.range.end - page_address);
+                            // now copy
+                            let dst_slice = &mut frame[start..stop];
+                            let src_slice = &data[(page_address + start - segment.range.start)
+                                ..(page_address + stop - segment.range.start)];
+                            dst_slice.copy_from_slice(src_slice);
+                        }
+                    }
+                }
+                Ok(allocated_pairs)
+            }
+        }
+    }
+```
+如果是线性映射，那就好办：直接对虚拟地址进行转换。  
+否则，需要访问页表，分配相应的物理页帧。  
+到这，我们就不仅为内核映射铺好了道路，而且对于用户进程也有着相应的支持。  
+我们这里封装一个新的概念：  
+` os/src/memory/mapping/memory_set.rs `  
+```Rust
+/// all message for a process to arrange memory
+pub struct MemorySet {
+    /// mapping relations
+    pub mapping: Mapping,
+    /// segments
+    pub segments: Vec<Segment>,
+    /// pairs between VirtualPageNumber and PhysicalPageNumber
+    pub allocated_pairs: Vec<(VirtualPageNumber, FrameTracker)>,
+}
+```
+可以理解为一个` MemorySet `对应一个用户/内核进程空间，每个进程都有着属于自己的内存空间，意味着每个进程将会拥有一个` MemorySet `。  
+最后对内核进行一个比较精细的重映射：  
 ` os/src/memory/mapping/memory_set.rs `  
 ```Rust
 ...
@@ -1441,19 +1719,57 @@ impl Segment {
     }
     。。。
 ```
+分别映射了 .text, .rodata, .data, .dss 段。  
+### 测试
+` os/src/main.rs `  
+```Rust
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 3");
+    interrupt::init();
+    memory::init();
+    let remap = memory::mapping::MemorySet::new_kernel().unwrap();
+    remap.activate();
+    println!("kernel has remapped");
+    
+    panic!()
+}
+```
+测试结果：   
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+Hello, rCore-Tutorial!
+I have done Lab 3
+mod interrupt initialized
+mod memory initialized
+Allocator size: 30168
+kernel has remapped
+panic: 'explicit panic'
+
+```
+在后面，我们会把所有运行的逻辑都封装为线程，每个线程都会拥有一个` MemorySet `并且当线程销毁的时候，页表所在的物理页面会自动释放。  
 ### 小结
-本次实验我们利用页表实现了虚拟地址到物理地址的映射和内核空间段的重映射。  
+本次实验我们利用页表实现了虚拟地址到物理地址的映射和内核空间段的重映射。感觉 Lab2 和 Lab3 结合起来实现了操作系统对空间的划分和管理，完成了许多基础的实现，为后面的上层建筑铺好了道路。  
 <span id="lab4"></span>
 ## Lab4
 ### 引言
-进程是资源的分配单位，线程是CPU的基本调度单位。  
-出于OS对计算机系统精细管理的目的，我们通常将“正在运行”的动态特性从进程中剥离出来，这样的一个借助 CPU 和栈的执行流，我们称之为线程 (Thread) 。一个进程可以有多个线程，也可以如传统进程一样只有一个线程。  
+进程是资源的基本分配单位，线程是CPU的基本调度单位。  
+一个进程可以有多个线程，也可以如传统进程一样只有一个线程。  
+我们将在本次实验中用某种数据结构表示进程和线程，并实现两者的创建，切换，结束等操作。  
 ### 实验内容
 + 线程和进程的概念以及运行状态的表示
 + 线程的切换
 + 对CPU进行抽象在上面完成对线程的调度
 ### 实验过程
 #### 线程和进程的表示
+不同操作系统中线程保存的信息不同，在这里，我们将会包括：  
++ 线程 ID
++ 运行栈
++ 线程执行上下文
++ 所属进程的记号
++ 内核栈
 线程表示：  
 ` os/src/process/thread.rs `  
 ```Rust
@@ -1481,6 +1797,9 @@ pub struct ThreadInner {
     pub descriptors: Vec<Arc<dyn INode>>,
 }
 ```
+进程的表示相对来说比较简单，在我们实现的操作系统中，它仅仅需要维护页面映射和一点额外信息：  
++ 用户态标识
++ 进程空间` MemorySet `
 进程的表示：  
 ` os/src/procecss/process.rs `   
 ```Rust
@@ -1492,7 +1811,7 @@ pub struct Process {
     pub memory_set: MemorySet,
 }
 ```
-线程调度器：  
+下面实现封装了一个“处理器”概念，用来存放和管理线程池：  
 ` os/src/process/processor.rs `  
 ```Rust
 #[derive(Default)]
@@ -1505,8 +1824,11 @@ pub struct Processor {
     sleeping_threads: HashSet<Arc<Thread>>,
 }
 ```
++ ` current_thread `保存当前正在执行的线程
++ ` scheduler `是一个线程调度器，我们可以为它实现自己的调度算法
++ ` sleeping_thread `保存正在休眠的线程，这是一个哈希表
 #### 线程的创建
-准备工作：  
+为了创建线程，我们需要以下准备工作：  
 + 建立页表映射
 + 设置起始执行的地址
 + 初始化各种寄存器
@@ -1519,8 +1841,21 @@ __restore:
     mv      sp, a0  # 加入这一行
     # ...
 ```
+我们启动一个线程的时候，只需要传入一个上下文参数，这个参数是一个指向线程上下文的指针，保存在` a0 `里面。下面是上下文` Context `的设计实现：  
++ ` sp `
++ ` a0~a7 `
++ ` ra `
++ ` sepc `
++ ` sstatus `
+
+一般情况下在操作系统初始化过程中是不允许产生中断的，我们需要修改` os/src/interrupt/timer.rs `，删去` inti() `中设置开启中断的代码。  
 然后设计好` Context `之后，只需要执行` __restore `就可以切换到第一个线程了。  
 #### 线程的切换
+线程切换的一般步骤：  
++ 保存上一个线程的上下文
++ 设置上一个线程的状态
++ 恢复下一个线程的上下文
++ 设置下一个线程的状态并运行
 线程切换的实现：  
 ` os/src/process/processor.rs `  
 ```Rust
@@ -1548,7 +1883,8 @@ __restore:
         }
     }
 ```
-上下文的保存和取出：  
+再每次时钟中断的时候，调用` prepare_next_thread `函数，如果没有活跃线程也没有休眠线程则退出。  
+下面实现上下文的保存和取出：  
 ` os/src/process/thread.rs `  
 ```Rust
 /// stop thread when time interrupt occur, and save Context
@@ -1571,11 +1907,11 @@ __restore:
         unsafe { KERNEL_STACK.push_context(parked_frame) }
     }
 ```
+注意，在` prepare `函数中第一件事就是切换页表。  
 #### 线程的结束
-内核线程将自己标记为”已结束“，同时触发一个` ebreak `异常。当操作系统观察到线程的标记，便将其终止。  
+我们这里的实现方法是内核线程将自己标记为”已结束“，同时触发一个` ebreak `异常。当操作系统观察到线程的标记，便将其终止。  
 ` os/src/main.rs `  
 ```Rust
-/// 内核线程需要调用这个函数来退出
 fn kernel_thread_exit() {
     // 当前线程标记为结束
     PROCESSOR.lock().current_thread().as_ref().inner().dead = true;
@@ -1584,6 +1920,7 @@ fn kernel_thread_exit() {
 }
 ```
 然后将这个函数作为内核线程的` ra `，使得它执行的函数完成后便执行` kernel_thread_exit() `  
+下面是测试代码：  
 ` os/src/main.rs `
 ```Rust
 /// 创建一个内核进程
@@ -1601,6 +1938,7 @@ pub fn create_kernel_thread(
 }
 ```
 #### 内核栈
+对于用户线程而言，它在用户态运行时用的是位于用户空间的用户栈，但是我们不确保在中断的时候` sp `指针还是指向用户空间，因此我们需要准备好一个用于在内核态执行函数的内核栈。  
 内核栈的实现方法：  
 + 留出一段空间作为内核栈
 + 运行线程时，在` sscratch `中保存内核栈栈顶指针
@@ -1633,7 +1971,8 @@ impl KernelStack {
 }
 ```
 #### 线程调度
-和内存分配器同样在` os/src/algorithm/src/scheduler/mod.rs `中定义一个 trait 作为接口：  
+我们希望能为各种不同的调度算法提供接口，这样能方便在以后的开发中实现新的调度算法。  
+因此我们和内存分配器同样在` os/src/algorithm/src/scheduler/mod.rs `中定义一个 trait 作为接口：  
 ` os/src/algorithm/src/scheduler/mod.rs `  
 ```Rust
 /// 线程调度器
@@ -1761,12 +2100,114 @@ impl<ThreadType: Clone + Eq> Scheduler<ThreadType> for StrideScheduler<ThreadTyp
     }
 }
 ```
+为了实现这个` stride `调度算法，我们需要在线程的封装中加入权限，这里就简单带过。  
+### 测试
+` os/src/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main() -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 4");
+    //panic!("Hi,panic here...")
+    
+    interrupt::init();
+    /*
+    unsafe {
+        llvm_asm!("ebreak"::::"volatile");
+    };
+    */
+    //unreachable!();
+    //loop{};
+    memory::init();
+    
+    
+    // test for alloc space
+    
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+    let v = Box::new(5);
+    assert_eq!(*v, 5);
+    core::mem::drop(v);
+    {
+        let mut vec = Vec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+        assert_eq!(vec.len(), 10);
+        for (i, value) in vec.into_iter().enumerate() {
+            assert_eq!(value, i);
+        }
+        println!("head test passed");
+    }
+    for index in 0..2 {
+        let frame_0 = match memory::FRAME_ALLOCATOR.lock().alloc() {
+            Result::Ok(frame_tracker) => frame_tracker,
+            Result::Err(err) => panic!("{}",err)
+        };
+        let frame_1 = match memory::FRAME_ALLOCATOR.lock().alloc() {
+            Result::Ok(frame_tracker) => frame_tracker,
+            Result::Err(err) => panic!("{}",err)
+        };
+        println!("index: {}, {} and {}", index, frame_0.page_number(), frame_1.page_number());
+    let process = Process::new_kernel().unwrap();
+    for message in 0..10 {
+        let thread = Thread::new(
+            process.clone(),
+        sample_process as usize,
+        Some(&[message]),
+        message,
+        ).unwrap();
+        PROCESSOR.get().add_thread(thread);
+    }
+    drop(process);
+    PROCESSOR.get().run();
+    
+}
+
+fn sample_process(message: usize) {
+    for i in 0..1000000 {
+        if i % 200000 == 0 {
+            println!("thread {}", message);
+        }
+    }
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+Hello, rCore-Tutorial!
+I have done Lab 4
+mod interrupt initialized
+mod memory initialized
+head test passed
+index: 0, PhysicalPageNumber(0x80ab2) and PhysicalPageNumber(0x80ab3)
+index: 1, PhysicalPageNumber(0x80ab2) and PhysicalPageNumber(0x80ab3)
+thread 0
+thread 1
+thread 2
+thread 3
+thread 4
+thread 5
+thread 6
+thread 7
+thread 8
+thread 9
+thread 9
+thread 8
+thread 7
+
+```
+最后会以`panic: 'all threads terminated, shutting down...'`退出。  
 ### 小结
 本次实验主要是理清线程和进程的概念，通过设置` Context `构造一个线程的状态抽象描述，实现内核栈和调度器。  
+我们发现在这一部分还可以实现的一点就是：隔开用户态进程和内核态进程，为操作系统提供安全的中断处理空间。  
 <span id="lab5"></span>
 ## Lab5
 ### 引言
 文件系统是操作系统用于明确存储设备（常见的是磁盘，也有基于NAND Flash的固态硬盘）或分区上的文件的方法和数据结构；即在存储设备上组织文件的方法。  
+在本次实验中，我们将实现设备树和块驱动，并在此基础上搭建简单文件系统。  
 ### 实验内容
 + 设备树的概念和读取
 + virtio 总线协议
@@ -1774,7 +2215,20 @@ impl<ThreadType: Clone + Eq> Scheduler<ThreadType> for StrideScheduler<ThreadTyp
 + 将块设备托管给文件系统
 ### 实验过程
 #### 设备树
-在 RISC-V 中，这接受设备信息一般是由 bootloader，即 OpenSBI 固件完成的。它来完成对于包括物理内存在内的各外设的扫描，将扫描结果以设备树二进制对象（DTB，Device Tree Blob）的格式保存在物理内存中的某个地方。  
+什么是设备树？  
+设备树是一种描述硬件资源的数据结构，它通过 bootloader 将硬件资源传给内核，使得内核和硬件资源描述相对独立。  
+在 RISC-V 中，接受设备信息一般是由 bootloader，即 OpenSBI 固件完成的。它来完成对于包括物理内存在内的各外设的扫描，将扫描结果以设备树二进制对象（DTB，Device Tree Blob）的格式保存在物理内存中的某个地方。  
+而这个放置的物理地址将放在` a1 `寄存器中，而将会把 HART ID 放在` a0 `寄存器上。  
+我们想要使用这两个参数，因此我们给` rust_main `函数增加两个参数：  
+` os/src/main.rs `  
+```Rust
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress)
+```
+对于设备树而言，每个设备节点上会有几个标准属性，这里简要介绍几个：  
++ compatible：设备的编程模型
++ model：设备生产商给设备的型号
+
+
 我们通过调用学长们写好的` device_tree `库对设备树进行解析：  
 ` os/src/drivers/device_tree.rs `  
 ```Rust
@@ -1814,9 +2268,12 @@ pub fn init(dtb_va: VirtualAddress) {
 }
 
 ```
+其中在` inti() `函数的遍历过程中，一旦发现了一个支持“virtio，mmio”的设备，就进入下一步加载驱动的逻辑。  
 #### virtio
-virtio 起源于 virtio: Towards a De-Facto Standard For Virtual I/O Devices 这篇论文，主要针对于半虚拟化技术中对通用设备的抽象。  
-` virtio `节点探测：  
+什么是 virtio？  
+virtio 是一种 I/O 半虚拟化解决方案，是一套通用 I/O 设备虚拟化的程序，是对半虚拟化 Hypervisor 中的一组通用 I/O 设备的抽象。提供了一套上层应用与各 Hypervisor 虚拟化设备（KVM，Xen，VMware等）之间的通信框架和编程接口，减少跨平台所带来的兼容性问题，大大提高驱动程序开发效率。  
+在完全虚拟化中，被虚拟的操作系统运行在 Hypervisor 之上，并不知道它已被虚拟化；在半虚拟化模式中，被虚拟的操作系统和 Hypervisor 能够共同合作，让模拟更加高效。  
+下面实现` virtio `节点探测：  
 ` os/src/drivers/bus/virtio_mmio.rs `  
 ```Rust
 /// 从设备树的某个节点探测 virtio 协议具体类型
@@ -1895,9 +2352,11 @@ extern "C" fn virtio_virt_to_phys(va: VirtualAddress) -> PhysicalAddress {
 }
 
 ```
-本身设备是通过直接内存访问DMA（Direct Memory Access）技术来实现数据传输的，CPU 只需要给出要传输哪些内容，放在哪段物理内存上面，把请求告诉设备，设备后面的操作就会利用 DMA 而不经过 CPU 直接传输。  
+本身设备是通过直接内存访问 DMA 技术来实现数据传输的，CPU 只需要给出要传输哪些内容，设备后面的操作就会利用 DMA 而不经过 CPU 直接传输。  
+传输结束之后，CPU 通过中断请求对信息进行进一步处理。  
 #### 驱动和块设备驱动
-对驱动进行抽象：  
+什么是驱动？  
+驱动程序是硬件厂商根据操作系统编写的配置文件，其中包含有关硬件设备的信息，这里我们仅仅是对驱动进行一个抽象：  
 ` os/src/drivers/driver.rs `  
 ```Rust
 /// type of device
@@ -1924,14 +2383,15 @@ pub trait Driver: Send + Sync {
     }
 }
 ```
-对块设备进行抽象：  
+可以看到，我们为其他未实现的驱动预留了接口，方便二次开发。  
+那什么是块设备？  
+简单理解，块设备是 I/O 设备的一种，每个块都有自己的地址，块大小固定，每个块都能独立于其他块进行读写。  
+下面对块设备进行抽象：  
 ` os/src/drivers/block/mod.rs `  
 ```Rust
 pub struct BlockDevice(pub Arc<dyn Driver>);
 
 /// 为 [`BlockDevice`] 实现 [`rcore-fs`] 中 [`BlockDevice`] trait
-///
-/// 使得文件系统可以通过调用块设备的该接口来读写
 impl dev::BlockDevice for BlockDevice {
     /// 每个块的大小（取 2 的对数）
     ///
@@ -1962,6 +2422,7 @@ impl dev::BlockDevice for BlockDevice {
     }
 }
 ```
+我们封装了一个` BlockDevice `，并为其实现了` dev::BlockDevice ` trait，使得后面需要实现的文件系统可以调用该设备的接口进行读写，比如` read_at `，` write_at `。  
 实现 virtio_blk 驱动  
 ` os/src/drivers/block/virtio_blk.rs `  
 ```Rust
@@ -1995,8 +2456,10 @@ pub fn add_driver(header: &'static mut VirtIOHeader) {
     DRIVERS.write().push(driver);
 }
 ```
+这里的读取是阻塞的读取，目的是简化设计。  
 #### 文件系统
-我们这里用了 rCore 中的文件系统模块` rcore-fs `，选择其中最简单的 Simple File System。  
+因为文件系统本身实现起来比较复杂，我们这里调用了 rCore 中的文件系统模块` rcore-fs `，选择其中最简单的 Simple File System。  
+下面是对存取根目录的` INode `进行抽象：  
 ` os/src/fs/mod.rs `  
 ```Rust
 lazy_static! {
@@ -2017,8 +2480,67 @@ lazy_static! {
     };
 }
 ```
+### 测试
+测试代码：  
+` os/src/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress ) -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 5");
+    memory::init();
+    interrupt::init();
+    drivers::init(dtb_pa);
+    fs::init();
+    let process = Process::new_kernel().unwrap();
+
+    PROCESSOR
+        .get()
+        .add_thread(Thread::new(process.clone(), simple as usize, Some(&[0]), 1).unwrap());
+
+    // 把多余的 process 引用丢弃掉
+    drop(process);
+
+    PROCESSOR.get().run()
+}
+/// 测试任何内核线程都可以操作文件系统和驱动
+fn simple(id: usize) {
+    println!("hello from thread id {}", id);
+    // 新建一个目录
+    fs::ROOT_INODE
+        .create("tmp", rcore_fs::vfs::FileType::Dir, 0o666)
+        .expect("failed to mkdir /tmp");
+    // 输出根文件目录内容
+    fs::ls("/");
+
+    loop {}
+}
+
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+Hello, rCore-Tutorial!
+I have done Lab 5
+mod memory initialized
+mod interrupt initialized
+mod driver initialized
+.
+..
+notebook
+hello_world
+mod fs initialized
+hello from thread id 0
+files in /:
+  . .. notebook hello_world tmp
+100 tick
+200 tick
+300 tick
+```
 ### 小结
-本次实验主要是在 QEMU 上挂载了存储设备，并实现了 virtio 驱动和一个简单的文件系统。  
+本次实验主要是在 QEMU 上挂载了存储设备，并实现了 virtio 驱动和一个简单的文件系统。这样，我们就能对文件进行简单的管理了，而且也能实现对用户数据的管理。  
 <span id="lab6"></span>
 
 ## Lab6
@@ -2170,5 +2692,119 @@ pub fn syscall_handler(context: &mut Context) -> *mut Context {
 }
 ```
 我们会利用文件的统一接口` INode `，使用其中的` read_at() `和` write_at() `接口实现读写系统调用。  
+#### 处理文件描述符
+` stdout `：标准输出流，文件描述符数值为1，遇到系统调用时直接将缓冲区中的字符通过 SBI 打印到标准输出设备上。  
+` stdin `：标准输入流，文件描述符为0，遇到系统调用时，通过中断或轮询方式获取字符。  
+我们现在打开 OpenSBI 中的外部中断，使得操作系统可以接受按键信息：  
+` os/src/interrupt/handler.rs `  
+```Rust
+// 在 OpenSBI 中开启外部中断
+        *PhysicalAddress(0x0c00_2080).deref_kernel() = 1u32 << 10;
+        // 在 OpenSBI 中开启串口
+        *PhysicalAddress(0x1000_0004).deref_kernel() = 0x0bu8;
+        *PhysicalAddress(0x1000_0001).deref_kernel() = 0x01u8;
+        // 其他一些外部中断相关魔数
+        *PhysicalAddress(0x0C00_0028).deref_kernel() = 0x07u32;
+        *PhysicalAddress(0x0C20_1000).deref_kernel() = 0u32;
+```
+#### 条件变量
+条件变量的常见接口：  
++ wait
++ notify_one
++ notify_all
+
+我们下面实现条件变量：  
+` os/src/kernel/condvar.rs `  
+```Rust
+#[derive(Default)]
+pub struct Condvar {
+    /// 所有等待此条件变量的线程
+    watchers: Mutex<VecDeque<Arc<Thread>>>,
+}
+
+impl Condvar {
+    /// 令当前线程休眠，等待此条件变量
+    pub fn wait(&self) {
+        self.watchers
+            .lock()
+            .push_back(PROCESSOR.get().current_thread());
+        PROCESSOR.get().sleep_current_thread();
+    }
+
+    /// 唤起一个等待此条件变量的线程
+    pub fn notify_one(&self) {
+        if let Some(thread) = self.watchers.lock().pop_front() {
+            PROCESSOR.get().wake_thread(thread);
+        }
+    }
+}
+```
+### 测试
+测试代码：  
+` os/src/main.rs `   
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress ) -> ! {
+    println!("Hello, rCore-Tutorial!");
+    println!("I have done Lab 6");
+    //panic!("Hi,panic here...")
+    
+    memory::init();
+    interrupt::init();
+    drivers::init(dtb_pa);
+    fs::init();
+    start_kernel_thread();
+    start_kernel_thread();
+    start_user_thread("hello_world");
+    start_user_thread("notebook");
+    PROCESSOR.get().run()
+    
+}
+fn start_kernel_thread() {
+    let process = Process::new_kernel().unwrap();
+    let thread = Thread::new(process, test as usize, None, 0).unwrap();
+    PROCESSOR.get().add_thread(thread);
+}
+
+fn test() {
+    println!("hello");
+}
+
+fn start_user_thread(name: &str) {
+    // 从文件系统中找到程序
+    let app = fs::ROOT_INODE.find(name).unwrap();
+    // 读取数据
+    let data = app.readall().unwrap();
+    // 解析 ELF 文件
+    let elf = ElfFile::new(data.as_slice()).unwrap();
+    // 利用 ELF 文件创建线程，映射空间并加载数据
+    let process = Process::from_elf(&elf, true).unwrap();
+    // 再从 ELF 中读出程序入口地址
+    let thread = Thread::new(process, elf.header.pt2.entry_point() as usize, None, 0).unwrap();
+    // 添加线程
+    PROCESSOR.get().add_thread(thread);
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+Hello, rCore-Tutorial!
+I have done Lab 6
+mod memory initialized
+mod interrupt initialized
+mod driver initialized
+.
+..
+notebook
+hello_world
+mod fs initialized
+
+<notebook>
+Hello world from user mode program!
+Thread 3 exit with code 0
+```
 ### 小结
 这次实验主要是成功单独生成了 ELF 格式的用户程序，并打包进文件系统中，同创建并运行了用户进程。另外，我们还实现了一些系统调用为用户程序提供服务。  
+系统调用对于用户程序来说很重要，系统调用是操作系统对用户程序提供的最普遍的支持，在以后的学习过程中，我希望能完善 rCore 中的系统调用功能。  
