@@ -100,32 +100,29 @@ impl Processor {
             __restore(context as usize);
         }
         unreachable!()
-
     }
-    
+
     /// activate `Context` of next thread
     pub fn prepare_next_thread(&mut self) -> *mut Context {
-            // ask for next thread from scheduler
-            if let Some(next_thread) = self.scheduler.get_next() {
-                // prepare next thread
-                let context = next_thread.prepare();
-                self.current_thread = Some(next_thread);
-                return context;
+        // ask for next thread from scheduler
+        if let Some(next_thread) = self.scheduler.get_next() {
+            // prepare next thread
+            let context = next_thread.prepare();
+            self.current_thread = Some(next_thread);
+            return context;
+        } else {
+            // have no active threads
+            if self.sleeping_threads.is_empty() {
+                // nor the sleeping threads, then panic
+                panic!("all threads terminated, shutting down...");
+            } else {
+                // have sleeping threads, waite for interrupt
+                self.current_thread = Some(IDLE_THREAD.clone());
+                IDLE_THREAD.prepare()
             }
-            else {
-                // have no active threads
-                if self.sleeping_threads.is_empty() {
-                    // nor the sleeping threads, then panic
-                    panic!("all threads terminated, shutting down...");
-                }
-                else  {
-                    // have sleeping threads, waite for interrupt
-                    self.current_thread = Some(IDLE_THREAD.clone());
-                    IDLE_THREAD.prepare()
-                }
-            }
+        }
     }
-    
+
     /// add a thread
     pub fn add_thread(&mut self, thread: Arc<Thread>) {
         if self.current_thread.is_none() {
@@ -157,7 +154,7 @@ impl Processor {
         self.scheduler.remove_thread(&current_thread);
         self.sleeping_threads.insert(current_thread);
     }
-    
+
     /// kill current thread
     pub fn kill_current_thread(&mut self) {
         // remove from scheduler
@@ -168,22 +165,10 @@ impl Processor {
 
     /// fork current thread
     pub fn fork_current_thread(&mut self, context: &Context) {
-        let new_thread = self.current_thread().fork(*context, self.current_thread().priority).unwrap();
+        let new_thread = self
+            .current_thread()
+            .fork(*context, self.current_thread().priority)
+            .unwrap();
         self.add_thread(new_thread);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

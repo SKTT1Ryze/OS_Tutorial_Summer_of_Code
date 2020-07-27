@@ -1,6 +1,6 @@
 //! thread [`Thread`]
 use super::*;
-use core::hash::{Hash,Hasher};
+use core::hash::{Hash, Hasher};
 // ID of thread, `isize`, negetive defines error
 pub type ThreadID = isize;
 static mut THREAD_COUNTER: ThreadID = 0;
@@ -31,7 +31,7 @@ pub struct ThreadInner {
 
 impl Thread {
     /// prepare a process
-    /// 
+    ///
     /// activate page table and return Context
     pub fn prepare(&self) -> *mut Context {
         // activate page table
@@ -46,23 +46,17 @@ impl Thread {
     }
 
     /// create a new thread
-    pub fn new (
+    pub fn new(
         process: Arc<Process>,
         entry_point: usize,
         arguments: Option<&[usize]>,
         priority: usize,
     ) -> MemoryResult<Arc<Thread>> {
         // 让所属进程分配并映射一段空间，作为线程的栈
-        let stack = process
-            .alloc_page_range(STACK_SIZE, Flags::READABLE | Flags::WRITABLE)?;
-        
-        // 构建线程的 Context            
-        let context = Context::new(
-            stack.end.into(),
-            entry_point,
-            arguments,
-            process.is_user,
-        );
+        let stack = process.alloc_page_range(STACK_SIZE, Flags::READABLE | Flags::WRITABLE)?;
+
+        // 构建线程的 Context
+        let context = Context::new(stack.end.into(), entry_point, arguments, process.is_user);
 
         // 打包成线程
         let thread = Arc::new(Thread {
@@ -92,20 +86,24 @@ impl Thread {
     /// fork a thread
     pub fn fork(&self, cur_context: Context, priority: usize) -> MemoryResult<Arc<Thread>> {
         println!("fork here");
-        let stack = self.process
+        let new_stack = self
+            .process
             .alloc_page_range(STACK_SIZE, Flags::READABLE | Flags::WRITABLE)?;
         for i in 0..STACK_SIZE {
-            *VirtualAddress(stack.start.0 + i).deref::<u8>() = *VirtualAddress(self.stack.start.0 + i).deref::<u8>()
+            *VirtualAddress(new_stack.start.0 + i).deref::<u8>() =
+                *VirtualAddress(self.stack.start.0 + i).deref::<u8>()
         }
         let mut new_context = cur_context.clone();
-        new_context.set_sp( usize::from(stack.start) -  usize::from(self.stack.start) + cur_context.sp()  );
+        new_context.set_sp(
+            usize::from(new_stack.start) + cur_context.sp() - usize::from(self.stack.start),
+        );
         let thread = Arc::new(Thread {
             id: unsafe {
                 THREAD_COUNTER += 1;
                 THREAD_COUNTER
             },
             priority: priority,
-            stack,
+            stack: new_stack,
             process: Arc::clone(&self.process),
             inner: Mutex::new(ThreadInner {
                 context: Some(new_context),
@@ -115,8 +113,7 @@ impl Thread {
         });
         Ok(thread)
     }
-
-}   
+}
 
 /// define equal by ID of thread
 impl PartialEq for Thread {

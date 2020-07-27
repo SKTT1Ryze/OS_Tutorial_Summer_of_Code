@@ -46,15 +46,13 @@ pub(super) fn sys_write(fd: usize, buffer: *mut u8, size: usize) -> SyscallResul
     SyscallResult::Proceed(-1)
 }
 
-pub(super) fn sys_open(buffer: *mut u8, size: usize) -> SyscallResult {
-    let name = unsafe {
-        let slice = slice::from_raw_parts(buffer, size);
-        str::from_utf8(slice).unwrap()
+pub(super) fn sys_open(buffer: *mut u8, file_size: usize) -> SyscallResult {
+    let file_name = unsafe {
+        let temp = slice::from_raw_parts(buffer, file_size);
+        str::from_utf8(temp).unwrap()
     };
-    // 从文件系统中找到程序
-    let file = ROOT_INODE.find(name).unwrap();
-    let process = PROCESSOR.lock().current_thread().process.clone();
-    process.inner().descriptors.push(file);
+    let new_process = PROCESSOR.lock().current_thread().process.clone();
+    new_process.inner().descriptors.push(ROOT_INODE.find(file_name).unwrap());
     SyscallResult::Proceed(
         (PROCESSOR
             .lock()

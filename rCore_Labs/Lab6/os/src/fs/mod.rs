@@ -47,16 +47,3 @@ pub fn init() {
     ROOT_INODE.ls();
     println!("mod fs initialized");
 }
-
-
-/// 打印某个目录的全部文件
-pub fn ls(path: &str) {
-    let mut id = 0;
-    let dir = ROOT_INODE.lookup(path).unwrap();
-    print!("files in {}: \n  ", path);
-    while let Ok(name) = dir.get_entry(id) {
-        id += 1;
-        print!("{} ", name);
-    }
-    print!("\n");
-}

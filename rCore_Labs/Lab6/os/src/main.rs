@@ -46,13 +46,28 @@ pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress) -> ! {
     interrupt::init();
     drivers::init(dtb_pa);
     fs::init();
-
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+    let v = Box::new(5);
+    assert_eq!(*v, 5);
+    core::mem::drop(v);
+    {
+        let mut vec = Vec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+        assert_eq!(vec.len(), 10);
+        for (i, value) in vec.into_iter().enumerate() {
+            assert_eq!(value, i);
+        }
+        println!("head test passed");
+    }
     {
         let mut processor = PROCESSOR.lock();
         // 创建一个内核进程
         let kernel_process = Process::new_kernel().unwrap();
         // 为这个进程创建多个线程，并设置入口均为 sample_process，而参数不同
-        for i in 1..9usize {
+        for i in 1..10usize {
             processor.add_thread(create_kernel_thread(
                 kernel_process.clone(),
                 sample_process as usize,
@@ -70,6 +85,7 @@ pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress) -> ! {
     let context = PROCESSOR.lock().prepare_next_thread();
     // 启动第一个线程
     unsafe { __restore(context as usize) };
+    
     unreachable!()
 }
 

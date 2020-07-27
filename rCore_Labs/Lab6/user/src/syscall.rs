@@ -62,11 +62,11 @@ pub fn sys_fork() -> isize {
     syscall(SYSCALL_FORK, 0, 0, 0)
 }
 
-pub fn sys_open(name: &str) -> isize {
+pub fn sys_open(file_name: &str) -> isize {
     syscall(
         SYSCALL_OPEN,
         0,
-        name.as_ptr() as *const u8 as usize,
-        name.len(),
+        file_name.as_ptr() as *const u8 as usize,
+        file_name.len(),
     )
 }

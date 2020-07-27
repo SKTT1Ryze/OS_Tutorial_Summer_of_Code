@@ -4,7 +4,7 @@ use super::Allocator;
 use alloc::{vec, vec::Vec};
 
 /// implement frame allocator with FreeList
-/// 
+///
 /// 使用两个 `Vec` ，一个表示空闲，一个表示已被分配
 pub struct FreeListAllocator {
     used_list: Vec<(usize, usize)>,
@@ -15,7 +15,7 @@ impl Allocator for FreeListAllocator {
     fn new(capacity: usize) -> Self {
         Self {
             used_list: vec![],
-            free_list: vec![(0,capacity)],
+            free_list: vec![(0, capacity)],
         }
     }
 
@@ -24,10 +24,9 @@ impl Allocator for FreeListAllocator {
             if end - start > 1 {
                 self.free_list.push((start + 1, end));
             }
-            self.used_list.push((start,start+1));
+            self.used_list.push((start, start + 1));
             Some(start)
-        }
-        else {
+        } else {
             None
         }
     }

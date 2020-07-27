@@ -14,8 +14,11 @@ pub fn main() -> usize {
     let file = sys_open("test.rs");
     let mut buffer = [0u8; 1024];
     let size = sys_read(file as usize, &mut buffer);
-    if let Ok(string) = String::from_utf8(buffer.iter().copied().take(size as usize).collect()) {
-        print!("{}", string);
+    match String::from_utf8(buffer.iter().copied().take(size as usize).collect()) {
+        Ok(string) => {
+            print!("{}", string);
+        }
+        _ => {},
     }
     0
 }

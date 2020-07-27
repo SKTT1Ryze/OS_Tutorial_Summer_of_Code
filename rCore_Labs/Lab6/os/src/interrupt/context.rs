@@ -10,7 +10,7 @@ use riscv::register::sstatus::{self, Sstatus, SPP::*};
 /// - `sstatus`:saved status
 /// - `sepc`：address of interrupt occurs
 ///
-/// ### `#[repr(C)]` 
+/// ### `#[repr(C)]`
 /// arrange the memory like C
 #[repr(C)]
 #[derive(Clone, Copy)]

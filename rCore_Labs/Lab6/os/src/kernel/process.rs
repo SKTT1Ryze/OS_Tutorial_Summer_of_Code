@@ -12,12 +12,12 @@ pub(super) fn sys_exit(code: usize) -> SyscallResult {
 }
 
 pub(super) fn sys_get_tid() -> SyscallResult {
-    let id = PROCESSOR.lock().current_thread().id.clone();
+    let id = PROCESSOR.lock().current_thread().id;
     SyscallResult::Proceed(id)
 }
 
 pub(super) fn sys_fork(context: &Context) -> SyscallResult {
-    let fork_id = PROCESSOR.lock().current_thread().id.clone();
+    let fork_id = PROCESSOR.lock().current_thread().id;
     PROCESSOR.lock().fork_current_thread(context);
     match PROCESSOR.lock().current_thread().id == fork_id {
         true => {

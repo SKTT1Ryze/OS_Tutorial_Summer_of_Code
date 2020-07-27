@@ -5,13 +5,13 @@ use super::Scheduler;
 //use alloc::collections::LinkedList;
 use alloc::vec::Vec;
 
-pub struct ThreadBlock <ThreadType: Clone + Eq> {
+pub struct ThreadBlock<ThreadType: Clone + Eq> {
     thread: ThreadType,
     pub priority: usize,
-    pub stride: usize,    
+    pub stride: usize,
 }
 
-impl <ThreadType: Clone + Eq> ThreadBlock <ThreadType> {
+impl<ThreadType: Clone + Eq> ThreadBlock<ThreadType> {
     fn new(thread: ThreadType, priority: usize, stride: usize) -> Self {
         Self {
             thread: thread,
@@ -22,8 +22,7 @@ impl <ThreadType: Clone + Eq> ThreadBlock <ThreadType> {
     fn update_stride(&mut self) {
         if self.priority == 0 {
             self.stride = MAX_STRIDE;
-        }
-        else {
+        } else {
             self.stride += MAX_STRIDE / self.priority;
         }
     }
@@ -33,20 +32,18 @@ impl <ThreadType: Clone + Eq> ThreadBlock <ThreadType> {
 }
 
 /// thread scheduler base on stride scheduling
-pub struct StrideScheduler <ThreadType: Clone + Eq> {
+pub struct StrideScheduler<ThreadType: Clone + Eq> {
     pool: Vec<ThreadBlock<ThreadType>>,
 }
 
 /// `Default` create a empty scheduler
 impl<ThreadType: Clone + Eq> Default for StrideScheduler<ThreadType> {
     fn default() -> Self {
-        Self {
-            pool: Vec::new(),
-        }
+        Self { pool: Vec::new() }
     }
 }
 
-impl <ThreadType: Clone + Eq> StrideScheduler <ThreadType> {
+impl<ThreadType: Clone + Eq> StrideScheduler<ThreadType> {
     fn get_min_stride_thread_index(&mut self) -> Option<usize> {
         if self.pool.is_empty() {
             return None;
@@ -61,33 +58,25 @@ impl <ThreadType: Clone + Eq> StrideScheduler <ThreadType> {
     }
 }
 
-
 impl<ThreadType: Clone + Eq> Scheduler<ThreadType> for StrideScheduler<ThreadType> {
     fn add_thread(&mut self, thread: ThreadType, priority: usize) {
-        self.pool.push(
-            ThreadBlock::new(thread, priority, 0)
-        )
+        self.pool.push(ThreadBlock::new(thread, priority, 0))
     }
 
     fn get_next(&mut self) -> Option<ThreadType> {
         if let Some(index) = self.get_min_stride_thread_index() {
-            //self.pool[index].update_stride();
-            //Some(self.pool[index].thread.clone())
-            
             let mut threadblock = self.pool.remove(index);
             threadblock.update_stride();
             let next_thread = threadblock.thread.clone();
             self.pool.push(threadblock);
             Some(next_thread)
-            
-        }
-        else {
+        } else {
             None
         }
     }
 
     fn remove_thread(&mut self, thread: &ThreadType) {
-        let mut removed = self.pool.drain_filter(|t|&(t.thread) == thread);
+        let mut removed = self.pool.drain_filter(|t| &(t.thread) == thread);
         assert!(removed.next().is_some() && removed.next().is_none());
     }
 

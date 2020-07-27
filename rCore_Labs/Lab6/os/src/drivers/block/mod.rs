@@ -24,7 +24,7 @@ impl dev::BlockDevice for BlockDevice {
         match self.0.read_block(block_id, buf) {
             true => Ok(()),
             false => Err(dev::DevError),
-        }        
+        }
     }
 
     /// write data from buf to block
