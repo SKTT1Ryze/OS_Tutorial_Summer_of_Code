@@ -478,6 +478,10 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 ### 事件1：观看清华大学操作系统线上课程
 
 ### 事件2：浏览一下Lab2实验指导
+这一章的实验指导中，你将会学到：  
++ 实现动态内存的分配
++ 了解 QEMU 模拟的 RISC-V Virt 计算机的物理内存
++ 通过页的方式对物理内存进行管理
 
 这天准备在13号的考试，因此进度停滞了一点。
 
@@ -506,10 +510,11 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 写Lab2学习报告
 
 ### 事件1：完成Lab2
-[Lab2](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab2/os)
-
+[Lab2](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab2/os)  
+本章完成了动态分配内存的管理和物理内存的管理，我们通过划分出一段静态内存为操作系统实现了动态内存的分配；通过页的管理模式，实现了物理页的分配器。  
+本章还只是物理内存的管理，后面为了进一步支持多线程的内存管理，我们将在下一章实现内存的虚拟化。  
 ### 事件2：写Lab2学习报告
-
+Lab2 中模块之间的调用比较频繁，需要写的地方有点多。  
 <span id="Day015"></span>
 
 ## Day 15 （2020-07-15）
@@ -520,9 +525,10 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 
 ### 事件1：完成Lab3
 项目地址：[Lab3](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab3/os)  
-
+回顾本章，我们理清了虚拟地址和物理地址的概念和关系；并利用页表完成虚拟地址到物理地址的映射；最后实现了内核空间段的重映射。  
+如果说本章和前一个章节是对空间的划分和管理，那么在下一个小节中，我们将实现对时间的划分和管理，也就是线程。  
 ### 准备改进Lab2和Lab3
-
+想了一会，觉得内存分配算法这里有改进的空间。  
 <span id="Day016"></span>
 
 ## Day 16 （2020-07-16）
@@ -536,6 +542,11 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 思考Lab2和Lab3不足之处
 项目地址：[Lab3](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab3/os)  
 ### 事件2：准备Lab4
+这一章的实验指导中，你将会学到：  
++ 线程和进程的概念以及运行状态的表示
++ 线程的切换
++ 对 CPU 进行抽象在上面完成对线程的调度
+
 
 <span id="Day017"></span>
 
@@ -555,7 +566,12 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 死锁和并发错误检测
 
 ### 事件2：开始Lab4
-
++ 进程和线程
++ 线程的创建
++ 线程的切换
++ 线程的结束
++ 内核栈
++ 线程调度
 <span id="Day018"></span>
 
 ## Day 18 （2020-07-18）
@@ -564,8 +580,13 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 实现新的调度算法
 ### 事件1：完成Lab4
 项目地址：[Lab4](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/tree/master/rCore_Labs/Lab4/os)  
-
-### 事件2：实现新的调度算法
+本章我们的工作有：  
++ 理清线程和进程的概念
++ 通过设置 Context，可以构造一个线程的初始状态
++ 通过 __restore 标签，直接进入第一个线程之中
++ 用 Context 来保存进程的状态，从而实现在时钟中断时切换线程
++ 实现内核栈，提供安全的中断处理空间
++ 实现调度器，完成线程的调度
 
 <span id="Day019"></span>
 
@@ -575,8 +596,9 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 + 完成新的调度算法
 
 ### 事件1：新的内存分配算法
-
+实现伙伴系统内存分配算法，出现许多 bug 。  
 ### 事件2：新的调度算法
+stride scheduling 算法。  
 
 今天一直在调bug
 
@@ -593,7 +615,7 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 源码地址：[buddy_system](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab4/os/src/algorithm/src/allocator/buddy_system_vector_allocator.rs)  
 
 ### 事件2：学习K210开发板
-
+买了个 k210 开发板 Maixpy Go，准备搞事情。  
 <span id="Day021"></span>
 
 ## Day 21 （2020-07-21）
@@ -618,7 +640,7 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 动手复现了Lab5的代码。  
 
 ### 事件2：阅读zCore文档
-
+感觉有点难懂。  
 <span id="Day023"></span>
 
 ## Day 23 （2020-07-23）
@@ -630,7 +652,9 @@ Rust 的 闭包（closures）是可以保存进变量或作为参数传递给其
 动手复现了Lab6的代码
 
 ### 事件2：继续阅读zCore的文档
+zCore 文档阅读就先到这，先完成这个月的任务。  
 
+### 事件3：在 k210 板子上跑通 Lab0 和 Lab1
 <span id="Day024"></span>
 
 ## Day 24 （2020-07-24）
