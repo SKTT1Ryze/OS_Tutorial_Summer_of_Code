@@ -7,7 +7,7 @@
 * [Lab4](#lab4)  
 * [Lab5](#lab5)  
 * [Lab6](#lab6)  
-* [Practice](#Practice)  
+* [实验题的实现](#Practice)  
 <span id="lab0"></span>
 
 ## Lab1
