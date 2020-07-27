@@ -1,19 +1,15 @@
 # rCore Tutorial Lab 学习报告
 
 ## **TOC**
-* [Lab0](#lab0)  
 * [Lab1](#lab1)  
 * [Lab2](#lab2)  
 * [Lab3](#lab3)  
 * [Lab4](#lab4)  
 * [Lab5](#lab5)  
 * [Lab6](#lab6)  
-
+* [Practice](#Practice)  
 <span id="lab0"></span>
 
-## Lab0
-
-<span id="lab1"></span>
 ## Lab1
 ### 引言
 本文是本人在详细阅读` rCore-Tutorial Lab1 `的实验指导，并仔细分析了实验代码中` interrupt `部分的代码之后，结合` RISC-V `特权指令规范文档，按照实验指导中文档格式规范编写的学习报告，对` RISC-V `架构下中断处理机制做了一遍梳理，并结合代码来分析实验代码在中断机制这个模块中是怎么实现的。另外，本人对实验指导和实验源码中提出的几个思考作出了自己的看法，并提出了对源码中某处实现方式合理性的疑问和改进方法。最后，本人尝试在现有代码基础上，为实验代码仿照` Linux `内核添加了中断描述符的逻辑，包括提出实现思路和尝试修改代码实现。  
@@ -2808,3 +2804,1106 @@ Thread 3 exit with code 0
 ### 小结
 这次实验主要是成功单独生成了 ELF 格式的用户程序，并打包进文件系统中，同创建并运行了用户进程。另外，我们还实现了一些系统调用为用户程序提供服务。  
 系统调用对于用户程序来说很重要，系统调用是操作系统对用户程序提供的最普遍的支持，在以后的学习过程中，我希望能完善 rCore 中的系统调用功能。  
+
+<span id="Practice"></span>
+## 实验题的实现
+### 基于线段树的物理页面分配算法
+线段树是一种二叉搜索树，它将一个区间划分为一些单元，每个单元对应于线段树中的一个叶节点。  
+线段树的每个节点代表了一条线段，比如[a, b]。长度为1的线段在叶节点上，每个非叶节点都有两个子节点，左节点为[a, (a+b) /2]，右节点为[(a+b)/2+1, b]。  
+线段树的原理参考了[Segment Tree](https://zhuanlan.zhihu.com/p/48760172)  
+下面对线段树分配器进行封装：  
+` os/src/algorithm/src/allocator/segment_tree_allocator.rs `  
+```Rust
+/// Segment Tree Allocator
+pub struct SegmentTreeAllocator {
+    /// tree
+    tree: Vec<u8>,
+}
+```
+我们这里用一个列表结构来表示树本身。  
+下面我们为这个线段树分配器实现一个` refresh_tree `方法，用于更新整个线段树的数据：  
+` os/src/algorithm/src/allocator/segment_tree_allocator.rs `  
+```Rust
+impl SegmentTreeAllocator {
+    fn refresh_tree(&mut self, mut index: usize, truth: bool) {
+        self.tree.set_bit(index, truth);
+        while index > 1 {
+            index /= 2;
+            match  self.tree.get_bit(index * 2) && self.tree.get_bit(index * 2 + 1) {
+                true => {
+                    self.tree.set_bit(index, true);
+                },
+                false => {
+                    self.tree.set_bit(index, false);
+                }
+            }
+        }
+    }
+}
+```
+下面为` SegmentAllocator `实现` Allocator `trait：  
+` os/src/algorithm/src/allocator/segment_tree_allocator.rs `  
+```Rust
+impl Allocator for SegmentTreeAllocator {
+    fn new(capacity: usize) -> Self {
+        // num of leaf
+        let leaf_num = capacity.next_power_of_two();
+        let mut tree = vec![0u8; leaf_num*2];
+        for i in ((capacity + 7) / 8)..(leaf_num / 8) {
+            tree[leaf_num / 8 + i] = 255u8;
+        }
+        for bit_offset in capacity..(capacity + 8) {
+            tree.set_bit(leaf_num + bit_offset, true);
+        }
+        for bit in (1..leaf_num).rev() {
+            match  tree.get_bit(bit * 2) && tree.get_bit(bit * 2 + 1) {
+                true => {
+                    tree.set_bit(bit, true);
+                },
+                false => {
+                    tree.set_bit(bit, false);
+                }
+            }
+        }
+        Self { 
+            tree
+        }
+    }
+
+    fn alloc(&mut self) -> Option<usize> {
+        match self.tree.get_bit(1) {
+            true => None,
+            false => {
+                let mut temp_node = 1;
+                while temp_node < self.tree.len() / 2 {
+                    temp_node = match !self.tree.get_bit(temp_node*2) {
+                        true => temp_node*2,
+                        false => {
+                            match !self.tree.get_bit(temp_node*2+1) {
+                                true => temp_node*2+1,
+                                false => panic!("tree is full of damaged")
+                            }
+                        }
+                    };
+                }
+                // change the tree
+                self.refresh_tree(temp_node, true);
+                Some(temp_node - self.tree.len() / 2)
+            }
+        }
+    }
+
+    fn dealloc(&mut self, index: usize) {
+        let change_node = self.tree.len() / 2 + index;
+        self.refresh_tree(change_node, false);
+    }
+}
+```
+思路是每次分配的时候递归找到一个没被分配的叶子节点，然后对其设置为 true ，也就是已被分配，然后调用上面实现的` refresh_tree `方法，更新整个线段树的数据。  
+回收的时候就设置相应位置的节点值为 false ，然后调用` refresh_tree `方法，更新整个线段树就行了。  
+测试代码：  
+` os/src/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress) -> ! {
+    memory::init();
+    interrupt::init();
+    drivers::init(dtb_pa);
+    fs::init();
+
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+    let v = Box::new(5);
+    assert_eq!(*v, 5);
+    core::mem::drop(v);
+    {
+        let mut vec = Vec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+        assert_eq!(vec.len(), 10);
+        for (i, value) in vec.into_iter().enumerate() {
+            assert_eq!(value, i);
+        }
+        println!("head test passed");
+    }
+    unreachable!()
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+mod memory initialized
+mod interrupt initialized
+mod driver initialized
+.
+..
+notebook
+hello_world
+test.rs
+mod fs initialized
+head test passed
+panic: 'internal error: entered unreachable code'
+```
+### 使用伙伴系统实现` VectorAllocator `trait
+这里参考了 Linux 伙伴系统的实现方法，因为算法本身不能使用动态内存分配，因此这里使用数组来实现。  
+下面对伙伴系统内存分配器进行封装：  
+` os/src/algorithm/src/allocator/buddy_system_allocator.rs `  
+```Rust
+/// block of buddy system
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct Block {
+    start: u8,
+    size: u8,
+    is_exist: bool,
+}
+/// Buddy System Vector Allocator
+pub struct BuddySystemVectorAllocator {
+    capacity: usize,
+    list_size: usize,
+    list: [Block; MAX_BLOCK_LIST_SIZE * 2],
+}
+```
+每个` Block `相当于一个内存块，大小是 2 的 n 次幂。  
+每个块的大小` size `与这它在` list `中的` index `的关系是` size = 2 ^ index`。  对` BuddySystemVectorAllocator `封装了一系列操作：  
+```Rust
+impl BuddySystemVectorAllocator {
+    fn is_empty_at(&self, index: usize) -> bool {
+        for i in
+            Self::find_start(index)..Self::find_start(index) + 2usize.pow((MAX_N - index) as u32)
+        {
+            match self.list[i].is_exist {
+                true => return false,
+                false => {}
+            }
+        }
+        true
+    }
+    fn pop_back_at(&mut self, index: usize) -> Option<Block> {
+        let mut i = 0;
+        for block in self.list
+            [Self::find_start(index)..Self::find_start(index) + 2usize.pow((MAX_N - index) as u32)]
+            .iter()
+        {
+            match block.is_exist {
+                false => {
+                    i += 1;
+                }
+                true => {
+                    //let new_block = block.take();
+                    let new_block = Block {
+                        start: block.start,
+                        size: block.size,
+                        is_exist: true,
+                    };
+                    self.list[Self::find_start(index) + i].is_exist = false;
+                    return Some(new_block);
+                }
+            }
+        }
+        None
+    }
+
+    fn push_back_at(&mut self, index: usize, new_block: Block) {
+        for i in 0..2usize.pow((MAX_N - index) as u32) {
+            match self.list[Self::find_start(index) + i].is_exist {
+                false => {
+                    self.list[Self::find_start(index) + i].start = new_block.start;
+                    self.list[Self::find_start(index) + i].size = new_block.size;
+                    self.list[Self::find_start(index) + i].is_exist = true;
+                    return;
+                }
+                true => {}
+            }
+        }
+    }
+    fn update(&mut self, new_block: Block, index: usize) {
+        if self.is_empty_at(index) {
+            self.push_back_at(index, new_block);
+        } else if index == self.list_size - 1 {
+            return;
+        } else {
+            let mut temp_array = [Block::new(); MAX_BLOCK_LIST_SIZE];
+            let mut count = 0;
+            while let Some(temp_block) = self.pop_back_at(index) {
+                if ((temp_block.start - new_block.start) as isize).abs() as u8 == new_block.size {
+                    if temp_block.start % (new_block.size * 2) == 0 {
+                        let new_big_block = Block {
+                            start: temp_block.start,
+                            size: temp_block.size * 2,
+                            is_exist: true,
+                        };
+                        self.update(new_big_block, index + 1);
+                    } else if new_block.start % (new_block.size * 2) == 0 {
+                        let new_big_block = Block {
+                            start: new_block.start,
+                            size: new_block.size * 2,
+                            is_exist: true,
+                        };
+                        self.update(new_big_block, index + 1);
+                    }
+                }
+                //temp_array[count] = temp_block;
+                temp_array[count].start = temp_block.start;
+                temp_array[count].size = temp_block.size;
+                temp_array[count].is_exist = true;
+                count += 1;
+            }
+            /*
+            while let Some(back_block) = temp_vec.pop() {
+                self.list[index].push_back(back_block);
+            }*/
+            for i in 0..count {
+                self.push_back_at(index, temp_array[i]);
+            }
+            self.push_back_at(index, new_block);
+        }
+    }
+    pub fn log_two(num: usize) -> usize {
+        if num % 2 != 0 {
+            panic!("not the power of two");
+        } else {
+            for i in 0..num {
+                if 2usize.pow(i as u32) == num {
+                    return i;
+                }
+            }
+            panic!("temp to get log2 of 0");
+        }
+    }
+
+    pub fn find_start(index: usize) -> usize {
+        let mut start = 0;
+        for i in 0..index {
+            start += 2usize.pow((MAX_N - i) as u32);
+        }
+        start
+    }
+}
+
+```
+这部分的实现有点复杂，这里不多加阐述。  
+对` BuddySystemVectorAllocator `实现` VectorAllocator `trait：  
+```Rust
+impl VectorAllocator for BuddySystemVectorAllocator {
+    fn new(capacity: usize) -> Self {
+        let total_size = capacity.next_power_of_two();
+        let list_size = min(Self::log_two(total_size) + 1, MAX_LIST_SIZE);
+        let mut new_list = [Block {
+            start: 0,
+            size: 0,
+            is_exist: false,
+        }; MAX_BLOCK_LIST_SIZE * 2];
+
+        new_list[Self::find_start(list_size - 1)].start = 0;
+        new_list[Self::find_start(list_size - 1)].size = total_size as u8;
+        new_list[Self::find_start(list_size - 1)].is_exist = true;
+        Self {
+            capacity: total_size,
+            list_size: list_size,
+            list: new_list,
+        }
+    }
+
+    fn alloc(&mut self, size: usize, _align: usize) -> Option<usize> {
+        if size > self.capacity {
+            return None;
+        }
+        let get_index = Self::log_two(size.next_power_of_two());
+        //let get_index = log_two(size);
+        let mut find_index = get_index;
+        while self.is_empty_at(find_index) {
+            find_index += 1;
+            if find_index > self.list_size - 1 {
+                break;
+            }
+        }
+        if find_index > self.list_size - 1 {
+            panic!("BuddySystemAllocator has nothing");
+        } else {
+            for i in 0..(find_index - get_index) {
+                let temp_block = self.pop_back_at(find_index - i);
+                match temp_block {
+                    None => panic!("the linkedlist is empty...from buddy system"),
+                    Some(tblock) => {
+                        self.push_back_at(
+                            find_index - i - 1,
+                            Block {
+                                start: tblock.start,
+                                size: tblock.size / 2,
+                                is_exist: true,
+                            },
+                        );
+                        self.push_back_at(
+                            find_index - i - 1,
+                            Block {
+                                start: tblock.start + tblock.size / 2,
+                                size: tblock.size / 2,
+                                is_exist: true,
+                            },
+                        );
+                    }
+                }
+            }
+            let alloc_block = self.pop_back_at(get_index);
+            match alloc_block {
+                None => panic!("get block error...from buddy system"),
+                Some(get_block) => {
+                    //assert_eq!(get_block.size, size.next_power_of_two());
+                    return Some(get_block.start as usize);
+                }
+            }
+        }
+    }
+
+    fn dealloc(&mut self, start: usize, size: usize, _align: usize) {
+        if !size.is_power_of_two() {
+            panic!("dealloc size is not the power fo two");
+        }
+        let get_index = Self::log_two(size);
+        let new_block = Block {
+            start: start as u8,
+            size: size as u8,
+            is_exist: true,
+        };
+        self.update(new_block, get_index);
+    }
+}
+
+```
+大致思路是：将` list `这个一维数组看作是每行大小固定的二维数组，数组元素是` Block `。分配的时候，在相应大小的位置找一个` Block `，如果没有，就继续往更大的方向找，找到之后往小的方向切割，直到得到适合大小的` Block `，返回开始地址。如果没找到，则 panic！。  
+回收的时候，设置相应的` Block `，然后调用` update `方法，达到归并的目的。  
+测试代码：  
+` os/src/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress) -> ! {
+    memory::init();
+    interrupt::init();
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+    let v = Box::new(5);
+    assert_eq!(*v, 5);
+    core::mem::drop(v);
+    {
+        let mut vec = Vec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+        assert_eq!(vec.len(), 10);
+        for (i, value) in vec.into_iter().enumerate() {
+            assert_eq!(value, i);
+        }
+        println!("head test passed");
+    }
+    unreachable!()
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+mod memory initialized
+mod interrupt initialized
+head test passed
+panic: 'internal error: entered unreachable code'
+```
+### 实现操作系统捕获 Ctrl + C 并结束当前运行的线程
+我们先为` Processor `实现一个` kill_current_thread `方法：  
+` os/src/process/processor.rs `  
+```Rust
+/// kill current thread
+    pub fn kill_current_thread(&mut self) {
+        // remove from scheduler
+        println!("kill here");
+        let thread = self.current_thread.take().unwrap();
+        self.scheduler.remove_thread(&thread);
+    }
+```
+简单明了。  
+然后在外部中断处理函数中添加相应的处理：  
+` os/src/interrupt/handle_function.rs `  
+```Rust
+/// handle external interrupt
+///
+/// continue: sepc add 2 to continue
+pub fn supervisor_external(context: &mut Context) -> *mut Context{
+    let mut c = console_getchar();
+    let f = 'f' as usize;
+    if c <= 255 {
+        match c {
+            3 => {
+                PROCESSOR.lock().kill_current_thread();
+                PROCESSOR.lock().prepare_next_thread();
+            },
+            f => {
+                PROCESSOR.lock().fork_current_thread(context);
+            },
+            _ => {
+                if c == '\r' as usize {
+                    c = '\n' as usize;
+                }
+            }
+        }
+        STDIN.push(c as u8);
+    }
+    context
+}
+````
+当输入 Ctrl + C 的时候，外部中断捕捉到 c 的值为3, 先调用` kill_current_thread `，再调用` prepare_next_thread `，来实现对当前线程的终止。  
+测试代码：  
+` os/src/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress) -> ! {
+    memory::init();
+    interrupt::init();
+    drivers::init(dtb_pa);
+    fs::init();
+
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+    let v = Box::new(5);
+    assert_eq!(*v, 5);
+    core::mem::drop(v);
+    {
+        let mut vec = Vec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+        assert_eq!(vec.len(), 10);
+        for (i, value) in vec.into_iter().enumerate() {
+            assert_eq!(value, i);
+        }
+        println!("head test passed");
+    }
+    
+    {
+        let mut processor = PROCESSOR.lock();
+        // 创建一个内核进程
+        let kernel_process = Process::new_kernel().unwrap();
+        // 为这个进程创建多个线程，并设置入口均为 sample_process，而参数不同
+        for i in 1..100usize {
+            processor.add_thread(create_kernel_thread(
+                kernel_process.clone(),
+                sample_process as usize,
+                Some(&[i]),
+            ));
+        }
+        //processor.add_thread(create_user_process("hello_world"));
+        //processor.add_thread(create_user_process("notebook"));
+    }
+
+    extern "C" {
+        fn __restore(context: usize);
+    }
+    // 获取第一个线程的 Context
+    let context = PROCESSOR.lock().prepare_next_thread();
+    // 启动第一个线程
+    unsafe { __restore(context as usize) };
+    
+    unreachable!()
+}
+```
+运行结果：  
+```
+...
+hello from kernel thread 63
+hello from kernel thread 64
+hello from kernel thread 65
+kill here
+hello from kernel thread 66
+hello from kernel thread 67
+...
+```
+### 实现进程的` fork() `
+先给` Thread `实现一个` fork `接口：  
+` os/src/process/thread.rs `  
+```Rust
+    /// fork a thread
+    pub fn fork(&self, cur_context: Context, priority: usize) -> MemoryResult<Arc<Thread>> {
+        println!("fork here");
+        let new_stack = self.process
+            .alloc_page_range(STACK_SIZE, Flags::READABLE | Flags::WRITABLE)?;
+        for i in 0..STACK_SIZE {
+            *VirtualAddress(new_stack.start.0 + i).deref::<u8>() = *VirtualAddress(self.stack.start.0 + i).deref::<u8>()
+        }
+        let mut new_context = cur_context.clone();
+        new_context.set_sp( usize::from(new_stack.start) + cur_context.sp() - usize::from(self.stack.start));
+        let thread = Arc::new(Thread {
+            id: unsafe {
+                THREAD_COUNTER += 1;
+                THREAD_COUNTER
+            },
+            priority: priority,
+            stack: new_stack,
+            process: Arc::clone(&self.process),
+            inner: Mutex::new(ThreadInner {
+                context: Some(new_context),
+                sleeping: false,
+                dead: false,
+            }),
+        });
+        Ok(thread)
+    }
+```
+先为新线程分配一个栈空间，然后拷贝数据，最后打包相应的数据为一个新线程并返回。  
+在` os/src/process/processor.rs  `中调用相应的接口：  
+```Rust
+/// fork current thread
+    pub fn fork_current_thread(&mut self, context: &Context) {
+        let new_thread = self.current_thread().fork(*context, self.current_thread().priority).unwrap();
+        self.add_thread(new_thread);
+    }
+```
+最后在` os/src/interrupt/handle_function.rs `中添加相应的处理：  
+```Rust
+/// handle external interrupt
+///
+/// continue: sepc add 2 to continue
+pub fn supervisor_external(context: &mut Context) -> *mut Context{
+    let mut c = console_getchar();
+    let f = 'f' as usize;
+    if c <= 255 {
+        match c {
+            3 => {
+                PROCESSOR.lock().kill_current_thread();
+                PROCESSOR.lock().prepare_next_thread();
+            },
+            f => {
+                PROCESSOR.lock().fork_current_thread(context);
+            },
+            _ => {
+                if c == '\r' as usize {
+                    c = '\n' as usize;
+                }
+            }
+        }
+        STDIN.push(c as u8);
+    }
+    context
+}
+```
+按 f 的时候，产生外部中断被系统捕捉到，然后调用相应的函数进行处理。  
+测试代码：  
+` os/scr/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress) -> ! {
+    memory::init();
+    interrupt::init();
+    drivers::init(dtb_pa);
+    fs::init();
+
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+    let v = Box::new(5);
+    assert_eq!(*v, 5);
+    core::mem::drop(v);
+    {
+        let mut vec = Vec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+        assert_eq!(vec.len(), 10);
+        for (i, value) in vec.into_iter().enumerate() {
+            assert_eq!(value, i);
+        }
+        println!("head test passed");
+    }
+    
+    {
+        let mut processor = PROCESSOR.lock();
+        // 创建一个内核进程
+        let kernel_process = Process::new_kernel().unwrap();
+        // 为这个进程创建多个线程，并设置入口均为 sample_process，而参数不同
+        for i in 1..100usize {
+            processor.add_thread(create_kernel_thread(
+                kernel_process.clone(),
+                sample_process as usize,
+                Some(&[i]),
+            ));
+        }
+        //processor.add_thread(create_user_process("hello_world"));
+        //processor.add_thread(create_user_process("notebook"));
+    }
+
+    extern "C" {
+        fn __restore(context: usize);
+    }
+    // 获取第一个线程的 Context
+    let context = PROCESSOR.lock().prepare_next_thread();
+    // 启动第一个线程
+    unsafe { __restore(context as usize) };
+    
+    unreachable!()
+}
+```
+运行结果：  
+```
+...
+hello from kernel thread 36
+hello from kernel thread 37
+hello from kernel thread 38
+fork here
+hello from kernel thread 39
+hello from kernel thread 40
+hello from kernel thread 41
+...
+```
+### 实现` Stride Scheduling `调度算法
+Stride 算法的基本原理是对于每一个进程，有一个 stride 值和一个步长 pass 值。每次进行调度时，选择  stride 最小的进程运行，并将这个进程的 stride 加上 pass 。pass 越小那么被调度的次数就会越多。在实验中，pass 依托优先级实现。优先级越大，pass 即用一个大常数除以优先级得到的值就越小，也就意味着被调度的次数越多。这里的 pass 我们用优先级的倒数来表示。  
+先封装一个线程块的概念：  
+` os/src/algorithm/src/scheduler/stride_scheduler.rs `  
+```Rust
+pub struct ThreadBlock <ThreadType: Clone + Eq> {
+    thread: ThreadType,
+    pub priority: usize,
+    pub stride: usize,    
+}
+```
+为` ThreadBlock `添加一些方法增加代码层次性：  
+```Rust
+impl <ThreadType: Clone + Eq> ThreadBlock <ThreadType> {
+    fn new(thread: ThreadType, priority: usize, stride: usize) -> Self {
+        Self {
+            thread: thread,
+            priority: priority,
+            stride: stride,
+        }
+    }
+    fn update_stride(&mut self) {
+        if self.priority == 0 {
+            self.stride = MAX_STRIDE;
+        }
+        else {
+            self.stride += MAX_STRIDE / self.priority;
+        }
+    }
+    fn set_priority(&mut self, priority: usize) {
+        self.priority = priority;
+    }
+}
+
+```
+有了线程块，现在来对线程调度器进行封装：  
+```Rust
+/// thread scheduler base on stride scheduling
+pub struct StrideScheduler <ThreadType: Clone + Eq> {
+    pool: Vec<ThreadBlock<ThreadType>>,
+}
+
+/// `Default` create a empty scheduler
+impl<ThreadType: Clone + Eq> Default for StrideScheduler<ThreadType> {
+    fn default() -> Self {
+        Self {
+            pool: Vec::new(),
+        }
+    }
+}
+
+impl <ThreadType: Clone + Eq> StrideScheduler <ThreadType> {
+    fn get_min_stride_thread_index(&mut self) -> Option<usize> {
+        if self.pool.is_empty() {
+            return None;
+        }
+        let mut min_stride_thread_index = 0;
+        for i in 0..self.pool.len() {
+            if self.pool[i].stride < self.pool[min_stride_thread_index].stride {
+                min_stride_thread_index = i;
+            }
+        }
+        Some(min_stride_thread_index)
+    }
+}
+```
+` StrideScheduler `里面封装了一个线程池，还有一些方法。  
+为` StrideScheduler `实现` Scheduler `trait：  
+```Rust
+impl<ThreadType: Clone + Eq> Scheduler<ThreadType> for StrideScheduler<ThreadType> {
+    fn add_thread(&mut self, thread: ThreadType, priority: usize) {
+        self.pool.push(
+            ThreadBlock::new(thread, priority, 0)
+        )
+    }
+
+    fn get_next(&mut self) -> Option<ThreadType> {
+        if let Some(index) = self.get_min_stride_thread_index() {
+            //self.pool[index].update_stride();
+            //Some(self.pool[index].thread.clone())
+            
+            let mut threadblock = self.pool.remove(index);
+            threadblock.update_stride();
+            let next_thread = threadblock.thread.clone();
+            self.pool.push(threadblock);
+            Some(next_thread)
+            
+        }
+        else {
+            None
+        }
+    }
+
+    fn remove_thread(&mut self, thread: &ThreadType) {
+        let mut removed = self.pool.drain_filter(|t|&(t.thread) == thread);
+        assert!(removed.next().is_some() && removed.next().is_none());
+    }
+
+    fn set_priority(&mut self, thread: ThreadType, priority: usize) {
+        for threadblock in self.pool.iter_mut() {
+            if threadblock.thread == thread {
+                threadblock.set_priority(priority);
+            }
+        }
+    }
+}
+```
+之前已经封装好了获得最小 stride 的方法` get_min_stride_thread_index `，我们这里会设置一个最大步长` pub const MAX_STRIDE: usize = 4_294_967_295; `，每次调度的时候取出 stride 值最小的线程，然后将这个线程的 stride 值加上最大步长除以优先级（优先级为 0 的话 stride 等于最大步长），返回到线程池中。  
+去掉线程的话就是根据 id 找到相应的线程，从线程池中去掉就可以了。  
+测试代码：  
+` os/src/main.rs `  
+```Rust
+// the first function to be called after _start
+#[no_mangle]
+pub extern "C" fn rust_main(_hart_id: usize, dtb_pa: PhysicalAddress) -> ! {
+    memory::init();
+    interrupt::init();
+    drivers::init(dtb_pa);
+    fs::init();
+    {
+        let mut processor = PROCESSOR.lock();
+        // 创建一个内核进程
+        let kernel_process = Process::new_kernel().unwrap();
+        // 为这个进程创建多个线程，并设置入口均为 sample_process，而参数不同
+        for i in 1..10usize {
+            processor.add_thread(create_kernel_thread(
+                kernel_process.clone(),
+                sample_process as usize,
+                Some(&[i]),
+            ));
+        }
+        //processor.add_thread(create_user_process("hello_world"));
+        //processor.add_thread(create_user_process("notebook"));
+    }
+
+    extern "C" {
+        fn __restore(context: usize);
+    }
+    // 获取第一个线程的 Context
+    let context = PROCESSOR.lock().prepare_next_thread();
+    // 启动第一个线程
+    unsafe { __restore(context as usize) };
+    
+    unreachable!()
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+mod memory initialized
+mod interrupt initialized
+mod driver initialized
+.
+..
+notebook
+hello_world
+test.rs
+mod fs initialized
+hello from kernel thread 2
+hello from kernel thread 3
+hello from kernel thread 4
+hello from kernel thread 5
+hello from kernel thread 6
+hello from kernel thread 7
+hello from kernel thread 8
+hello from kernel thread 9
+hello from kernel thread 1
+100 tick
+200 tick
+...
+```
+### ` sys_get_id `系统调用
+首先在内核中实现这个系统调用：  
+` os/src/kernel/process.rs `  
+```Rust
+pub(super) fn sys_get_tid() -> SyscallResult {
+    let id = PROCESSOR.lock().current_thread().id;
+    SyscallResult::Proceed(id)
+}
+```
+直接获得线程 id 就行。  
+然后在` os/src/kernel/syscall.rs `中处理相应的接口：  
+```Rust
+...
+pub const SYS_GETID: usize = 101;
+...
+pub fn syscall_handler(context: &mut Context) -> *mut Context {
+	...
+	let result = match syscall_id {
+        SYS_READ => sys_read(args[0], args[1] as *mut u8, args[2]),
+        SYS_WRITE => sys_write(args[0], args[1] as *mut u8, args[2]),
+        SYS_EXIT => sys_exit(args[0]),
+        SYS_GETID => sys_get_tid(),
+        _ => unimplemented!(),
+    };
+    ...
+}
+```
+学长们已经为我们打好了框架，我们只需要填空就可以了。  
+最后在用户程序中添加相应的接口：  
+` user/scr/syscall.rs `  
+```Rust
+const SYSCALL_GETTID: usize = 101;
+pub fn sys_get_tid() -> isize {
+    syscall(SYSCALL_GETTID, 0, 0, 0)
+}
+```
+测试代码：  
+` user/src/bin/hello_world.rs `  
+```Rust
+pub fn main() -> usize {
+    println!("Hello world from user mode program!");
+    println!("tid: {}",sys_get_tid());
+    0
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+mod memory initialized
+mod interrupt initialized
+mod driver initialized
+.
+..
+notebook
+hello_world
+test.rs
+mod fs initialized
+...
+Hello world from user mode program!
+tid: 10
+thread 10 exit with code 0
+kill here
+hello from kernel thread 1
+100 tick
+
+```
+### ` sys_fork `系统调用
+在` os/kernel/process.rs `中实现` sys_fork `系统调用：  
+```Rust
+pub(super) fn sys_fork(context: &Context) -> SyscallResult {
+    let fork_id = PROCESSOR.lock().current_thread().id;
+    PROCESSOR.lock().fork_current_thread(context);
+    match PROCESSOR.lock().current_thread().id == fork_id {
+        true => {
+            SyscallResult::Proceed(fork_id)
+        },
+        false => {
+            SyscallResult::Proceed(0)
+        }
+    }
+}
+```
+这里同时也调用了前面实验题完成的接口，从这里可以看出 Rust 语言的模块性做得特别好。  
+同样也是要处理相应的接口供用户程序使用：  
+` os/src/kernel/syscall.rs `  
+```Rust
+...
+pub const SYS_FORK: usize = 102;
+...
+pub fn syscall_handler(context: &mut Context) -> *mut Context {
+	...
+	let result = match syscall_id {
+        SYS_READ => sys_read(args[0], args[1] as *mut u8, args[2]),
+        SYS_WRITE => sys_write(args[0], args[1] as *mut u8, args[2]),
+        SYS_EXIT => sys_exit(args[0]),
+        SYS_GETID => sys_get_tid(),
+        SYS_FORK => sys_fork(context),
+        _ => unimplemented!(),
+    };
+    ...
+}
+```
+` usr/src/syscall.rs `  
+```Rust
+const SYSCALL_FORK: usize = 102;
+pub fn sys_fork() -> isize {
+    syscall(SYSCALL_FORK, 0, 0, 0)
+}
+```
+测试代码：  
+` user/src/bin/hello_world.rs `  
+```Rust
+#[no_mangle]
+pub fn main() -> usize {
+    println!("Hello world from user mode program!");
+    println!("tid: {}",sys_get_tid());
+    println!("fork: {}",sys_fork());
+    println!("tid: {}",sys_get_tid());
+    0
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+mod memory initialized
+mod interrupt initialized
+mod driver initialized
+.
+..
+notebook
+hello_world
+test.rs
+mod fs initialized
+...
+Hello world from user mode program!
+tid: 10
+fork here
+fork: 0
+tid: 11
+thread 11 exit with code 0
+kill here
+hello from kernel thread 1
+fork: 10
+tid: 10
+thread 10 exit with code 0
+kill here
+100 tick
+200 tick
+```
+### ` sys_open `系统调用
+个人感觉这个有点复杂，参考了一些同学的做法，先将文件打包为镜像文件，然后从文件中找到该文件，用` sys_read `读取并打印内容。  
+实现：  
+` os/src/kernel/fs.rs `  
+```Rust
+pub(super) fn sys_open(buffer: *mut u8, file_size: usize) -> SyscallResult {
+    let file_name = unsafe {
+        let temp = slice::from_raw_parts(buffer, file_size);
+        str::from_utf8(temp).unwrap()
+    };
+    let new_process = PROCESSOR.lock().current_thread().process.clone();
+    new_process.inner().descriptors.push(ROOT_INODE.find(file_name).unwrap());
+    SyscallResult::Proceed(
+        (PROCESSOR
+            .lock()
+            .current_thread()
+            .process
+            .clone()
+            .inner()
+            .descriptors
+            .len()
+            - 1) as isize,
+    )
+}
+```
+补充接口：  
+` os/src/kernel/syscall.rs `  
+```Rust
+...
+pub const SYS_OPEN: usize = 103;
+...
+pub fn syscall_handler(context: &mut Context) -> *mut Context {
+	...
+	let result = match syscall_id {
+        SYS_READ => sys_read(args[0], args[1] as *mut u8, args[2]),
+        SYS_WRITE => sys_write(args[0], args[1] as *mut u8, args[2]),
+        SYS_EXIT => sys_exit(args[0]),
+        SYS_GETID => sys_get_tid(),
+        SYS_FORK => sys_fork(context),
+        SYS_OPEN => sys_open(args[1] as *mut u8, args[2]),
+        _ => unimplemented!(),
+    };
+    ...
+}
+```
+` user/src/syscall.rs `  
+```Rust
+pub const SYSCALL_OPEN: usize = 103;
+...
+pub fn sys_open(file_name: &str) -> isize {
+    syscall(
+        SYSCALL_OPEN,
+        0,
+        file_name.as_ptr() as *const u8 as usize,
+        file_name.len(),
+    )
+}
+```
+我们把一下文件放在` user `文件夹的根目录下：  
+` user/test.rs `  
+```Rust
+//! test file for sys_open
+
+fn test() {
+    println!("test here");
+}
+```
+修改 Makefile：  
+` user/Makefile `  
+```Makefile
+BAG_FILES	:= test.rs
+# 编译、打包、格式转换、预留空间
+build: dependency
+	@cargo build
+	@echo Targets: $(patsubst $(SRC_DIR)/%.rs, %, $(SRC_FILES))
+	@rm -rf $(OUT_DIR)
+	@mkdir -p $(OUT_DIR)
+	@cp $(BIN_FILES) $(OUT_DIR)
+	@cp $(BAG_FILES) $(OUT_DIR)	
+	@rcore-fs-fuse --fs sfs $(IMG_FILE) $(OUT_DIR) zip
+	@qemu-img convert -f raw $(IMG_FILE) -O qcow2 $(QCOW_FILE)
+	@qemu-img resize $(QCOW_FILE) +1G
+
+```
+测试代码：  
+` user/src/bin/hello_world.rs `  
+```Rust
+#[no_mangle]
+pub fn main() -> usize {
+    println!("Hello world from user mode program!");
+    let file = sys_open("test.rs");
+    let mut buffer = [0u8; 1024];
+    let size = sys_read(file as usize, &mut buffer);
+    match String::from_utf8(buffer.iter().copied().take(size as usize).collect()) {
+        Ok(string) => {
+            print!("{}", string);
+        }
+        _ => {},
+    }
+    0
+}
+```
+运行结果：  
+```
+PMP0: 0x0000000080000000-0x000000008001ffff (A)
+PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
+mod memory initialized
+mod interrupt initialized
+mod driver initialized
+.
+..
+notebook
+hello_world
+test.rs
+mod fs initialized
+...
+Hello world from user mode program!
+//! test file for sys_open
+
+fn test() {
+    println!("test here");
+}hello from kernel thread 1
+thread 10 exit with code 0
+kill here
+100 tick
+200 tick
+```
