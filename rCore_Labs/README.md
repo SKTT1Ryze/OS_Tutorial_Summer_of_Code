@@ -21,9 +21,9 @@ Lab6 是我根据实验指导一步步构建起来的代码，因此请助教学
 + ` sys_fork `系统调用：[sys_fork](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab6/os/src/kernel/process.rs)
 + ` sys_open `系统调用：[sys_open](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab6/os/src/kernel/fs.rs)
 
-
-最后在` interrupt `部分添加了中断描述符表` IDT `的实现：[IDT](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab6/os/src/interrupt/idt.rs)  
+最后实现了` free list `分配算法[free_list](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab6/os/src/algorithm/src/allocator/free_list_allocator.rs)和在` interrupt `部分添加了中断描述符表` IDT `的实现：[IDT](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab6/os/src/interrupt/idt.rs)  
 详细的实现方法请看实验报告：[rCore Lab Report](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/report.md)  
+
 ## Lab 之外做的研究
 在 k210 板子上跑 rCore-Tutorial。  
 
