@@ -23,7 +23,7 @@ Lab6 是我根据实验指导一步步构建起来的代码，因此请助教学
 
 
 最后在` interrupt `部分添加了中断描述符表` IDT `的实现：[IDT](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/Lab6/os/src/interrupt/idt.rs)  
-
+详细的实现方法请看实验报告：[rCore Lab Report](https://github.com/SKTT1Ryze/OS_Tutorial_Summer_of_Code/blob/master/rCore_Labs/report.md)  
 ## Lab 之外做的研究
 在 k210 板子上跑 rCore-Tutorial。  
 
