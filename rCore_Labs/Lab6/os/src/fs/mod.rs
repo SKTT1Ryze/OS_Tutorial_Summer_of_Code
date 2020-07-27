@@ -48,7 +48,7 @@ pub fn init() {
     println!("mod fs initialized");
 }
 
-/*
+
 /// 打印某个目录的全部文件
 pub fn ls(path: &str) {
     let mut id = 0;
@@ -60,4 +60,3 @@ pub fn ls(path: &str) {
     }
     print!("\n");
 }
-*/

@@ -78,7 +78,7 @@ pub fn get_handle_function(index: usize, context: &mut Context) {
 ///
 /// continue: sepc add 2 to continue
 pub fn breakpoint(context: &mut Context) -> *mut Context{
-    println!("Breakpoint at 0x{:x}", context.sepc);
+    //println!("Breakpoint at 0x{:x}", context.sepc);
     /*
     println!("Another breakpoint interrupt start");
     unsafe {
@@ -97,9 +97,9 @@ pub fn breakpoint(context: &mut Context) -> *mut Context{
 //pub fn supervisor_timer(_: &Context) {
 pub fn supervisor_timer(context: &mut Context) -> *mut Context{
     timer::tick();
-    PROCESSOR.get().park_current_thread(context);
+    PROCESSOR.lock().park_current_thread(context);
     //println!("timer interrupt return");
-    PROCESSOR.get().prepare_next_thread()
+    PROCESSOR.lock().prepare_next_thread()
 }
 
 /// handle external interrupt
@@ -107,9 +107,28 @@ pub fn supervisor_timer(context: &mut Context) -> *mut Context{
 /// continue: sepc add 2 to continue
 pub fn supervisor_external(context: &mut Context) -> *mut Context{
     let mut c = console_getchar();
+    let f = 'f' as usize;
+    /*
     if c <= 255 {
         if c == '\r' as usize {
             c = '\n' as usize;
+        }
+        STDIN.push(c as u8);
+    }*/
+    if c <= 255 {
+        match c {
+            3 => {
+                PROCESSOR.lock().kill_current_thread();
+                PROCESSOR.lock().prepare_next_thread();
+            },
+            f => {
+                PROCESSOR.lock().fork_current_thread(context);
+            },
+            _ => {
+                if c == '\r' as usize {
+                    c = '\n' as usize;
+                }
+            }
         }
         STDIN.push(c as u8);
     }
@@ -120,11 +139,11 @@ pub fn supervisor_external(context: &mut Context) -> *mut Context{
 pub fn fault(_context: &mut Context, scause: Scause, stval: usize) -> *mut Context {
     println!(
         "{:x?} terminated with {:x?}",
-        PROCESSOR.get().current_thread(),
+        PROCESSOR.lock().current_thread(),
         scause.cause()
     );
     println!("stval: {:x}", stval);
-    PROCESSOR.get().kill_current_thread();
+    PROCESSOR.lock().kill_current_thread();
     // 跳转到 PROCESSOR 调度的下一个线程
-    PROCESSOR.get().prepare_next_thread()
+    PROCESSOR.lock().prepare_next_thread()
 }

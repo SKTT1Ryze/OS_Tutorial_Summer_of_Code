@@ -1,5 +1,4 @@
 //! thread [`Thread`]
-use crate::fs::*;
 use super::*;
 use core::hash::{Hash,Hasher};
 // ID of thread, `isize`, negetive defines error
@@ -15,7 +14,7 @@ pub struct Thread {
     /// Stack
     pub stack: Range<VirtualAddress>,
     /// process belonged
-    pub process: Arc<RwLock<Process>>,
+    pub process: Arc<Process>,
     /// Some vals
     pub inner: Mutex<ThreadInner>,
 }
@@ -26,8 +25,8 @@ pub struct ThreadInner {
     pub context: Option<Context>,
     /// is sleep or not
     pub sleeping: bool,
-    /// Opening files
-    pub descriptors: Vec<Arc<dyn INode>>,
+    /// is dead or not
+    pub dead: bool,
 }
 
 impl Thread {
@@ -36,7 +35,7 @@ impl Thread {
     /// activate page table and return Context
     pub fn prepare(&self) -> *mut Context {
         // activate page table
-        self.process.write().memory_set.activate();
+        self.process.inner().memory_set.activate();
         // get Context
         let parked_frame = self.inner().context.take().unwrap();
         // push Context in kernel stack
@@ -48,14 +47,13 @@ impl Thread {
 
     /// create a new thread
     pub fn new (
-        process: Arc<RwLock<Process>>,
+        process: Arc<Process>,
         entry_point: usize,
         arguments: Option<&[usize]>,
         priority: usize,
     ) -> MemoryResult<Arc<Thread>> {
         // 让所属进程分配并映射一段空间，作为线程的栈
         let stack = process
-            .write()
             .alloc_page_range(STACK_SIZE, Flags::READABLE | Flags::WRITABLE)?;
         
         // 构建线程的 Context            
@@ -63,7 +61,7 @@ impl Thread {
             stack.end.into(),
             entry_point,
             arguments,
-            process.read().is_user,
+            process.is_user,
         );
 
         // 打包成线程
@@ -78,7 +76,7 @@ impl Thread {
             inner: Mutex::new(ThreadInner {
                 context: Some(context),
                 sleeping: false,
-                descriptors: vec![STDIN.clone(), STDOUT.clone()],
+                dead: false,
             }),
         });
         Ok(thread)
@@ -90,6 +88,34 @@ impl Thread {
         // save Context in thread
         self.inner().context.replace(context);
     }
+
+    /// fork a thread
+    pub fn fork(&self, cur_context: Context, priority: usize) -> MemoryResult<Arc<Thread>> {
+        println!("fork here");
+        let stack = self.process
+            .alloc_page_range(STACK_SIZE, Flags::READABLE | Flags::WRITABLE)?;
+        for i in 0..STACK_SIZE {
+            *VirtualAddress(stack.start.0 + i).deref::<u8>() = *VirtualAddress(self.stack.start.0 + i).deref::<u8>()
+        }
+        let mut new_context = cur_context.clone();
+        new_context.set_sp( usize::from(stack.start) -  usize::from(self.stack.start) + cur_context.sp()  );
+        let thread = Arc::new(Thread {
+            id: unsafe {
+                THREAD_COUNTER += 1;
+                THREAD_COUNTER
+            },
+            priority: priority,
+            stack,
+            process: Arc::clone(&self.process),
+            inner: Mutex::new(ThreadInner {
+                context: Some(new_context),
+                sleeping: false,
+                dead: false,
+            }),
+        });
+        Ok(thread)
+    }
+
 }   
 
 /// define equal by ID of thread

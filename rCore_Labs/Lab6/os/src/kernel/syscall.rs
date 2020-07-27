@@ -5,7 +5,9 @@ use super::*;
 pub const SYS_READ: usize = 63;
 pub const SYS_WRITE: usize = 64;
 pub const SYS_EXIT: usize = 93;
-
+pub const SYS_GETID: usize = 101;
+pub const SYS_FORK: usize = 102;
+pub const SYS_OPEN: usize = 103;
 /// 系统调用在内核之内的返回值
 pub(super) enum SyscallResult {
     /// 继续执行，带返回值
@@ -28,6 +30,9 @@ pub fn syscall_handler(context: &mut Context) -> *mut Context {
         SYS_READ => sys_read(args[0], args[1] as *mut u8, args[2]),
         SYS_WRITE => sys_write(args[0], args[1] as *mut u8, args[2]),
         SYS_EXIT => sys_exit(args[0]),
+        SYS_GETID => sys_get_tid(),
+        SYS_FORK => sys_fork(context),
+        SYS_OPEN => sys_open(args[1] as *mut u8, args[2]),
         _ => unimplemented!(),
     };
 
@@ -41,13 +46,13 @@ pub fn syscall_handler(context: &mut Context) -> *mut Context {
             // 将返回值放入 context 中
             context.x[10] = ret as usize;
             // 保存 context，准备下一个线程
-            PROCESSOR.get().park_current_thread(context);
-            PROCESSOR.get().prepare_next_thread()
+            PROCESSOR.lock().park_current_thread(context);
+            PROCESSOR.lock().prepare_next_thread()
         }
         SyscallResult::Kill => {
             // 终止，跳转到 PROCESSOR 调度的下一个线程
-            PROCESSOR.get().kill_current_thread();
-            PROCESSOR.get().prepare_next_thread()
+            PROCESSOR.lock().kill_current_thread();
+            PROCESSOR.lock().prepare_next_thread()
         }
     }
 }

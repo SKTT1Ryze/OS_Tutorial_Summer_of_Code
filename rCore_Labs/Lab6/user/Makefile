@@ -16,6 +16,7 @@ OUT_DIR		:= build/disk
 IMG_FILE	:= build/raw.img
 QCOW_FILE	:= build/disk.img
 
+BAG_FILES	:= test.rs
 # 安装 rcore-fs-fuse 工具
 dependency:
 ifeq ($(shell which rcore-fs-fuse),)
@@ -30,6 +31,7 @@ build: dependency
 	@rm -rf $(OUT_DIR)
 	@mkdir -p $(OUT_DIR)
 	@cp $(BIN_FILES) $(OUT_DIR)
+	@cp $(BAG_FILES) $(OUT_DIR)	
 	@rcore-fs-fuse --fs sfs $(IMG_FILE) $(OUT_DIR) zip
 	@qemu-img convert -f raw $(IMG_FILE) -O qcow2 $(QCOW_FILE)
 	@qemu-img resize $(QCOW_FILE) +1G

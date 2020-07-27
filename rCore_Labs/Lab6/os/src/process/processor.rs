@@ -7,7 +7,24 @@ use lazy_static::*;
 
 lazy_static! {
     /// global [`Processor`]
-    pub static ref PROCESSOR: UnsafeWrapper<Processor> = Default::default();
+    pub static ref PROCESSOR: Lock<Processor> = Lock::new(Processor::default());
+}
+
+lazy_static! {
+    /// 空闲线程：当所有线程进入休眠时，切换到这个线程——它什么都不做，只会等待下一次中断
+    static ref IDLE_THREAD: Arc<Thread> = Thread::new(
+        Process::new_kernel().unwrap(),
+        wait_for_interrupt as usize,
+        None,
+        1,
+    ).unwrap();
+}
+
+/// 不断让 CPU 进入休眠等待下一次中断
+unsafe fn wait_for_interrupt() {
+    loop {
+        llvm_asm!("wfi" :::: "volatile");
+    }
 }
 
 /// 线程调度和管理
@@ -88,7 +105,6 @@ impl Processor {
     
     /// activate `Context` of next thread
     pub fn prepare_next_thread(&mut self) -> *mut Context {
-        loop {
             // ask for next thread from scheduler
             if let Some(next_thread) = self.scheduler.get_next() {
                 // prepare next thread
@@ -104,10 +120,10 @@ impl Processor {
                 }
                 else  {
                     // have sleeping threads, waite for interrupt
-                    crate::interrupt::wait_for_interrupt();        
+                    self.current_thread = Some(IDLE_THREAD.clone());
+                    IDLE_THREAD.prepare()
                 }
             }
-        }
     }
     
     /// add a thread
@@ -145,8 +161,15 @@ impl Processor {
     /// kill current thread
     pub fn kill_current_thread(&mut self) {
         // remove from scheduler
+        println!("kill here");
         let thread = self.current_thread.take().unwrap();
         self.scheduler.remove_thread(&thread);
+    }
+
+    /// fork current thread
+    pub fn fork_current_thread(&mut self, context: &Context) {
+        let new_thread = self.current_thread().fork(*context, self.current_thread().priority).unwrap();
+        self.add_thread(new_thread);
     }
 }
 

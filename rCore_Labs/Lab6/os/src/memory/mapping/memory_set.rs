@@ -92,7 +92,6 @@ impl MemorySet {
     }
 
     /// 通过 elf 文件创建内存映射（不包括栈）
-    // todo: 有可能不同的字段出现在同一页？
     pub fn from_elf(file: &ElfFile, is_user: bool) -> MemoryResult<MemorySet> {
         // 建立带有内核映射的 MemorySet
         let mut memory_set = MemorySet::new_kernel()?;
