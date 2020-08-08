@@ -1,0 +1,10 @@
+/home/hustccc/OS_Tutorial_Summer_of_Code/zcore_test/target/debug/deps/spin-255dae68e3b30415.rmeta: /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/lib.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/mutex.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/rw_lock.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/once.rs
+
+/home/hustccc/OS_Tutorial_Summer_of_Code/zcore_test/target/debug/deps/libspin-255dae68e3b30415.rlib: /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/lib.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/mutex.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/rw_lock.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/once.rs
+
+/home/hustccc/OS_Tutorial_Summer_of_Code/zcore_test/target/debug/deps/spin-255dae68e3b30415.d: /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/lib.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/mutex.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/rw_lock.rs /home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/once.rs
+
+/home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/lib.rs:
+/home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/mutex.rs:
+/home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/rw_lock.rs:
+/home/hustccc/.cargo/registry/src/mirrors.ustc.edu.cn-61ef6e0cd06fb9b8/spin-0.5.2/src/once.rs:
