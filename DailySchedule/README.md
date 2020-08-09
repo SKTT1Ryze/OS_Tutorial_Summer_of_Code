@@ -807,3 +807,68 @@ zCore 文档阅读就先到这，先完成这个月的任务。
 
 下午是华为 OpenEuler 操作系统的架构师的分享。  
 晚上是贾越凯学长关于 zCore 虚拟化的分享和王润基学长关于 zCore 内核对象和系统调用，zCore 硬件移植和驱动开发的分享。（讲得特别好）  
+
+<span id="Day038"></span>
+
+## Day 38 （2020-08-07）
+线下实习第五天，也是最后一天  
+早上 9 点到 11 点半是同学们为期 5 天的线下实习的总结报告，每个同学上台讲一下这个月要达成的阶段性目标，并且说一下预期会遇到的困难和实现的可能性。  
+我也是按照昨天和向勇老师，还有王润基学长讨论的那样，比较紧张地讲了一下，具体的内容都昨天的日报。  
+下午是早上没讲的同学继续讲。  
+晚上是肖络元工程师介绍 zCore 应用开发。  
+
+<span id="Day039"></span>
+
+## Day 39 （2020-08-08）
+今天从深圳做高铁回到广州大哥的家住几天。  
+晚上根据 zCore-Tutorial 重现了内核对象的代码，加深了对内核对象的理解。  
+下面定义内核对象的 trait ：  
+```Rust
+/// trait for kernel object
+pub trait KernelObject: DowncastSync + Debug {
+    /// get id of kernel object
+    fn id(&self) -> KoID;
+    /// get type of kernel object
+    fn type_name(&self) -> &str;
+    /// get name of kernel object
+    fn name(&self) -> String;
+    /// set name of kernel object
+    fn set_name(&self, name: &str);
+}
+```  
+下面编写一个宏自动为内核对象实现`KernelObject` trait：  
+```Rust
+#[macro_export]
+macro_rules! impl_kobject {
+    ($class:ident $( $fn:tt )*) => {
+        // implement `KernelObject` trait for object
+        impl KernelObject for $class {
+            fn id(&self) -> KoID {
+                self.base.id
+            }
+            fn type_name(&self) -> &str {
+                stringify!($class)
+            }
+            fn name(&self) -> alloc::string::String {
+                self.base.name()
+            }
+            fn set_name(&self, name: &str) {
+                self.base.set_name(name)
+            }
+            $( $fn )*
+        }
+        impl core::fmt::Debug for $class {
+            fn fmt(
+                &self,
+                f: &mut core::fmt::Formatter<'_>,
+            ) -> core::result::Result<(),core::fmt::Error> {
+                f.debug_tuple(&stringify!($class))
+                    .field(&self.id())
+                    .field(&self.name())
+                    .finish()
+            }
+        }
+    };
+}
+```
+我们还实现了接口到具体类型的向下转换，并为上述逻辑写了单元测试。  
