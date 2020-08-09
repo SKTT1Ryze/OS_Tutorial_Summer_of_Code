@@ -63,4 +63,11 @@ mod tests {
         object_1.set_name("object_1");
         assert_eq!(object_1.name(), "object_1");
     }
+
+    #[test]
+    fn downcast() {
+        let dummy = DummyObject::new();
+        let object: Arc<dyn KernelObject> = dummy;
+        let _result: Arc<DummyObject> = object.downcast_arc::<DummyObject>().unwrap();
+    }
 }
