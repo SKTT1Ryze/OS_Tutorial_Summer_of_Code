@@ -879,3 +879,22 @@ macro_rules! impl_kobject {
 今天看了一下 zCore 的源码，结合之前看的 pql 学长的毕设论文，目前大概清楚了 zCore 的整体结构。  
 经过分析，zCore 中与架构相关的模块在 kernel-hal-bare 文件夹中，我要做的工作就是完善这部分模块对于 RISCV 架构的支持。但目前我对于具体怎么做还没有更明确的认识。  
 同时，我还需要对 rCore 中的对 RSICV 支持的代码进行分析，目前在 rCore 源码中有一个 Arch 文件夹，里面是架构相关的代码，我需要重点对这部分代码进行分析。  
+
+<span id="Day041"></span>
+
+## Day 41 （2020-08-10）
+今天下了一天 zCore 项目，总是各种失败。还去忙了其他事情，因此进度停滞了一些。  
+
+<span id="Day042"></span>
+
+## Day 42 （2020-08-11）
+今天下好了 zCore 项目，能正常编译运行了，达到这个目标还耗费了不少心思，现在只想吐槽一下 git lfs 的速度是真的慢。  
+看了看 Makefile，发现当时写 Makefile 的开发者没把 riscv 架构的支持考虑进去，Makefile中没给 riscv 架构的编译搭好框架。我打算当进度足够之后重写这个 Makefile。又发现 zCore 裸机上的编译依赖 rboot 子模块，而这个 rboot 是 x86 架构下的 Bootloader UEFI 固件，而在 riscv 架构的计算机中，一般使用 SBI 固件。目前想到下面三种解决办法：  
++ 重新实现支持 riscv 架构的 SBI
++ 使用 OpenSBI
++ 使用洛佳同学开发的 RustSBI
+
+
+目前打算看一下《用 rust 语言编写操作系统》这本书，这样能让我对整体的知识框架有所补充。  
+并且查阅一下相关资料，思考一下 riscv 架构的 Bootloader 该怎么写。  
+这两个任务是并发执行的。  
