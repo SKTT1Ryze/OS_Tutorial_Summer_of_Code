@@ -898,3 +898,12 @@ macro_rules! impl_kobject {
 目前打算看一下《用 rust 语言编写操作系统》这本书，这样能让我对整体的知识框架有所补充。  
 并且查阅一下相关资料，思考一下 riscv 架构的 Bootloader 该怎么写。  
 这两个任务是并发执行的。  
+
+<span id="Day043"></span>
+
+## Day 43 （2020-08-12）
+经过自己的思考和同学们的讨论，我将使用 OpenSBI 来对 zCore 在 riscv 下 qemu 上的启动提供支持。  
+目前要做的就是在 riscv 的 qemu 上跑起 zCore 的一些底层支持，比如 kernel-hal-bare 中的 interrupt 支持。  
+我先尝试把 luojia 维护的 riscv-sbi-rt 库用起来，经过一番尝试并和 luojia 本人的交流后觉得这个库的实现有些问题，因此暂时不用这个库。我使用之前 rCore-Tutorial 的框架搭建了一个 zCore-riscv 的开发环境，目前已经在上面跑起了内核对象。  
+接下来的目标就是在这个框架上跑起 kernel-hal-bare 中的 interrupt.rs 。  
+明天回家之后就要加快进度了，还是在熟悉的环境下工作效率高。  
