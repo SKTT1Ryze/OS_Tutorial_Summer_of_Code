@@ -907,3 +907,21 @@ macro_rules! impl_kobject {
 我先尝试把 luojia 维护的 riscv-sbi-rt 库用起来，经过一番尝试并和 luojia 本人的交流后觉得这个库的实现有些问题，因此暂时不用这个库。我使用之前 rCore-Tutorial 的框架搭建了一个 zCore-riscv 的开发环境，目前已经在上面跑起了内核对象。  
 接下来的目标就是在这个框架上跑起 kernel-hal-bare 中的 interrupt.rs 。  
 明天回家之后就要加快进度了，还是在熟悉的环境下工作效率高。  
+
+<span id="Day044"></span>
+
+## Day 44 （2020-08-13）
+今天分析了一下 zCore 的源码，目前的理解如下：  
++ zCore 的模块化十分清晰，它将各个层次模块作为一个个 crate 进行调用。比如 kernel-hal 和 kernel-hal-bare。
++ kernel-hal 模块不依赖于其他模块，并为其他模块提供支持
++ kernel-hal-bare 是唯一和硬件交互的模块，而其他模块都与硬件无关，但不保证与架构无关
++ 各个模块最终作为一个 crate 在 zCore 中被调用来构建一个 OS
++ 如果 kernel-hal 以上层次的模块是架构无关的，那么我只需要增加 kernel-hal 模块和 kernel-hal-bare 模块的 riscv 支持
+
+
+目前遇到的障碍：  
++ zCore 源码没有完整注释文档，阅读起来比较困难
++ 不是很清楚哪部分代码是架构相关
++ 可能有些引用库是不支持 riscv 架构的
+
+
