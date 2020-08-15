@@ -924,4 +924,26 @@ macro_rules! impl_kobject {
 + 不是很清楚哪部分代码是架构相关
 + 可能有些引用库是不支持 riscv 架构的
 
+<span id="Day045"></span>
 
+## Day 45 （2020-08-14）
+今天一整天都在研究 zCore 源码和在我的框架上构建代码，目前对 zCore 源码的分析更新如下：  
++ kernel-hal-bare 模块是唯一与硬件相关的代码
++ zCore 的模块化十分清晰，它将各个层次模块作为一个个 crate 进行调用。比如 kernel-hal 和 kernel-hal-bare。
++ kernel-hal 模块不依赖于其他模块，并为其他模块提供支持
++ 各个模块最终作为一个 crate 在 zCore 中被调用来构建一个 OS
++ 在硬件抽象层之下的 kernel-hal-bare 和 之上的各个层次都有架构相关的代码
++ kernel-hal 模块被其他多个模块依赖，而 kernel-hal-bare 只在最终构建 zCore 的时候被调用
++ 在我构建的框架中，原本在 zCore 中的模块在这里将不再作为一个个 crate，而是一个个 mod
++ 目前的大致方向是在我搭建的这个框架上一点点地构建 os，最终目标是使其能在 riscv 下的 qemu 上执行 zCore 的大部分功能。 
+
+
+目前我在维护的项目地址：[zCore-riscv](https://github.com/SKTT1Ryze/zCore-riscv)  
+在这个项目中我选择将原先在 zCore 中作为 crate 的模块作为 mod 处理的原因有：  
++ 按照之前 rCore-Tutorial 的框架进行开发，会比较熟悉，省去了不少学习的时间成本
++ 这样相当于重新搭建起 zCore，在此过程中我将能较快较全面地熟悉 zCore，理解 zCore 自上而下构建操作系统的思路
++ 如果代码在此框架上能跑通，那么在原 zCore 上也肯定没问题，代码迁移的工作量是很小的
+
+
+目前进度在 github 上可以看到，目前还比较少。  
+争取明天能跑起一个内核对象。  
