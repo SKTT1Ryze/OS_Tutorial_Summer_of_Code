@@ -947,3 +947,37 @@ macro_rules! impl_kobject {
 
 目前进度在 github 上可以看到，目前还比较少。  
 争取明天能跑起一个内核对象。  
+
+<span id="Day046"></span>
+
+## Day 46 （2020-08-15）
+今天完成了 zircon-kernel 从 zCore 到 zCore-riscv 的迁移。  
+另外添加了对这部分模块的测试代码，大部分测试都能通过，某些测试因为缺少实现而出现 unimplement panic。  
+下面是对 kernel-hal 中 #[linkage = "weak"] 标志的函数的理解：  
++ 这些函数在 kernel-hal 中并没有得到实现，而是由 kernel-hal 层往上的模块实现，这种逻辑的支持来自弱链接
++ kernel-hal-bare 则会是调用后面实现的这些函数，比如 hal_frame_alloc()
++ 在 zCore 中不同模块是分别作为一个个 crate，但是在 zCore-riscv 中是作为一个个 mod，这导致在 zCore-riscv 中不能使用弱链接的形式
+
+解决办法：  
++ 方法一：在各个模块的逻辑中将那些使用 kernel-hal 模块的部分直接换为真正的实现部分
++ 方法二：在后续将 kernel-hal 那些没实现的函数实现之后，在 kernel-hal 里的那些函数体里面调用实现的函数
++ 方法三：重新整理代码将各个模块重构成一个个 crate
+
+使用哪种方法将取决于后面的进展。  
+不过无论使用哪种方法，最终都还是要回到 zCore 上去，目前我只是需要在一个运行环境中能成功运行和测试。等在 zCore-riscv 上的运行和测试通过后，各种实现逻辑将会再移植到 zCore 里面去。  
+在今天下午的交流会议中，刘丰源学长曾经做过到 mips 上的移植，他给我传授了一些经验：先在一个运行环境中在用户态打印出 HelloWorld，然后再一步步完善底层结果，大致上就是将那些 unimplement 的部分给实现来。  
+打算到 18 号开始复习期末考试，这几天尽量做多一点。  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
