@@ -969,9 +969,20 @@ macro_rules! impl_kobject {
 打算到 18 号开始复习期末考试，这几天尽量做多一点。  
 
 
+<span id="Day047"></span>
 
+## Day 47 （2020-08-16）
+今天完成了 zircon-syscall 和 zircon-loader 层从 zCore 到 zCore-riscv 的迁移。  
+准备在 QEMU 中跑起 userboot 的时候，遇到了一个大障碍：  
++ 原版 zCore 需要用到zircon镜像 prebuilt/zircon/x64/userboot.so，这些镜像文件依赖于 Fuchsia 官方镜像，目前 Fuchsia 官方不支持 riscv，因此我目前无法获得适用于 zCore 的 riscv 上的 Fuchsia 镜像。
++ 我的理解是 zCore 现在可以在裸机或 QEMU 上跑 Fuchsia 原生用户程序，而 Fuchsia 官方目前只支持 x86 和 Arm 两种架构，再有由于 Fuchsia 是商业项目，因此他们可能不打算支持 riscv，这样的话想在 zCore 上跑 Fuchsia 用户程序的话道阻且长。  
 
+通过和学长，老师们交流，目前想到以下解决办法：  
++ 写一个简单 Fuchsia 小程序替代 userboot.so，先看看运行效果
++ 利用 loader 层底下的实现暂时先重写一个简陋的 zircon-loader，先让整个框架能跑在 loader 层以上，能在上层环境输出，以达到验证底层代码正确性的效果
++ 参照 rCore-Tutorial，整个重写 zircon-loader，不执着于跑 Fuchsia 用户程序的思路，而是跑自己用 Rust 写的用户程序
 
+明天再深入研究一下 zircon-loader 代码，并思考一下后续工作如何开展。  
 
 
 
