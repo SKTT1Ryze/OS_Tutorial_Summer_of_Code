@@ -1,1 +1,0 @@
-/home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/macro_test/target/debug/macro_test: /home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/hello_macro/hello_macro_derive/src/lib.rs /home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/hello_macro/src/lib.rs /home/hustccc/OS_Tutorial_Summer_of_Code/Rust_Learning_Code/macro_test/src/main.rs
