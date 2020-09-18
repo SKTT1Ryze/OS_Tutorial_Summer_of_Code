@@ -1,1 +1,0 @@
-/home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/switch_statement/target/debug/switch_statement: /home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/switch_statement/src/main.rs

@@ -1,1 +1,0 @@
-/home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/writing_and_using_functions/target/debug/writing_and_using_functions: /home/hustccc/OS_Tutorial_Summer_of_Code/Learn_Rust_The_Hard_Way/writing_and_using_functions/src/main.rs
